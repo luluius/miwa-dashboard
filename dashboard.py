@@ -1,0 +1,760 @@
+"""
+Miwa Control Center - Serveur Aiohttp avec support d'édition de statuts et profil.
+"""
+
+import os
+import json
+import time
+import re
+from aiohttp import web
+
+DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "miwa2026")
+PORT = int(os.getenv("DASHBOARD_PORT", "8080"))
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATES_FILE = os.path.join(BASE_DIR, "chat_states.json")
+HISTORIES_FILE = os.path.join(BASE_DIR, "conversation_histories.json")
+QUEUE_FILE = os.path.join(BASE_DIR, "message_queue.json")
+HTML_FILE = os.path.join(BASE_DIR, "dashboard.html")
+PAYMENT_LINKS_FILE = os.path.join(BASE_DIR, "payment_links.json")
+SCRIPTS_FILE = os.path.join(BASE_DIR, "scripts.json")
+VAULT_FILE = os.path.join(BASE_DIR, "vault_media.json")
+TAGS_FILE = os.path.join(BASE_DIR, "custom_tags.json")
+RATES_RULES_FILE = os.path.join(BASE_DIR, "rates_rules.json")
+MEDIA_DIR = os.path.join(BASE_DIR, "media")
+VAULT_DIR = os.path.join(BASE_DIR, "vault")
+USER_PRESENCE_FILE = os.path.join(BASE_DIR, "user_presence.json")
+os.makedirs(MEDIA_DIR, exist_ok=True)
+os.makedirs(VAULT_DIR, exist_ok=True)
+
+DEFAULT_RATES_RULES = {
+    "rates": [
+        {"title": "Photo exclusive", "price": "10 €", "desc": "Selfie coquin ou lingerie"},
+        {"title": "Pack 3 photos", "price": "25 €", "desc": "Série exclusive personnalisée"},
+        {"title": "Vidéo courte (15-30s)", "price": "35 €", "desc": "Vidéo déshabillage ou bisous"},
+        {"title": "Vidéo personnalisée (1-2min)", "price": "60 €", "desc": "Avec prénom prononcé"},
+        {"title": "Sexting live 15 min", "price": "40 €", "desc": "Discussion coquine en temps réel + 2 photos"},
+        {"title": "Abonnement VIP Uncove", "price": "15 € / mois", "desc": "Accès à tous les médias privés"}
+    ],
+    "rules": [
+        "Ne JAMAIS promettre de rencontre réelle dans la vraie vie.",
+        "Toujours utiliser le prénom du fan pour créer une proximité immédiate.",
+        "Rester naturelle, chaleureuse, un peu taquine, ne jamais être agressive.",
+        "Pour chaque demande intime, orienter vers un lien de paiement avec douceur.",
+        "Ne jamais revendre un média déjà envoyé au même fan (vérifier le badge Vault)."
+    ]
+}
+
+AI_DETECTION_PATTERNS = [
+    r"\b(?:es[\s\-]tu|t[\'’]es|tu es|c[\'’]est)\s+(?:un\s+)?(?:robot|bot)\b",
+    r"\b(?:es[\s\-]tu|t[\'’]es|tu es|c[\'’]est)\s+(?:une\s+)?ia\b",
+    r"\b(?:intelligence artificielle|chatgpt|deepfake|deep fake|faux profil|fake profil|compte fake)\b",
+    r"\b(?:es[\s\-]tu|t[\'’]es|tu es)\s+(?:une\s+)?(?:r[eé]elle|vraie personne|humain[e]?)\b",
+    r"\b(?:tu existes vraiment|tu es fake|t\'es fake|es[\s\-]tu vraie|es[\s\-]tu vrai)\b",
+    r"\b(?:on dirait un robot|on dirait une ia|parler [aà] un humain|vraie femme)\b",
+    r"\b(?:hamadou)\b",
+    r"\b(?:arnaque|arnaqueur|scam)\b",
+]
+
+COLOR_STYLES = {
+    "sky": {"badge": "bg-sky-500/15 text-sky-300 border-sky-500/30", "dot": "bg-sky-400", "hex": "#38bdf8"},
+    "rose": {"badge": "bg-rose-500/15 text-rose-300 border-rose-500/30", "dot": "bg-rose-400", "hex": "#fb7185"},
+    "emerald": {"badge": "bg-emerald-500/15 text-emerald-300 border-emerald-500/30", "dot": "bg-emerald-400", "hex": "#34d399"},
+    "amber": {"badge": "bg-amber-500/15 text-amber-300 border-amber-500/30", "dot": "bg-amber-400", "hex": "#fbbf24"},
+    "violet": {"badge": "bg-violet-500/15 text-violet-300 border-violet-500/30", "dot": "bg-violet-400", "hex": "#a78bfa"},
+    "fuchsia": {"badge": "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30", "dot": "bg-fuchsia-400", "hex": "#e879f9"},
+    "cyan": {"badge": "bg-cyan-500/15 text-cyan-300 border-cyan-500/30", "dot": "bg-cyan-400", "hex": "#22d3ee"},
+    "yellow": {"badge": "bg-yellow-500/15 text-yellow-300 border-yellow-500/30", "dot": "bg-yellow-400", "hex": "#facc15"},
+    "orange": {"badge": "bg-orange-500/15 text-orange-300 border-orange-500/30", "dot": "bg-orange-400", "hex": "#fb923c"},
+    "slate": {"badge": "bg-slate-500/15 text-slate-300 border-slate-500/30", "dot": "bg-slate-400", "hex": "#94a3b8"}
+}
+
+DEFAULT_TAGS = [
+    {"id": "fan", "label": "Fan", "color": "sky", "is_default": True},
+    {"id": "timewaster", "label": "Timewaster", "color": "rose", "is_default": True},
+    {"id": "spender", "label": "Spender", "color": "emerald", "is_default": True}
+]
+
+def load_json(filepath):
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_json(filepath, data):
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception:
+        return False
+
+def load_tags():
+    tags = load_json(TAGS_FILE)
+    if not isinstance(tags, list) or not tags:
+        tags = DEFAULT_TAGS
+        save_json(TAGS_FILE, tags)
+    return tags
+
+def save_tags(tags):
+    return save_json(TAGS_FILE, tags)
+
+def get_fan_status(state, user_id: str, tags_dict: dict):
+    tag_id = state.get("tag_id") or state.get("manual_status") or "fan"
+    if tag_id not in tags_dict:
+        tag_id = "fan"
+    tag = tags_dict.get(tag_id, tags_dict.get("fan"))
+    color = tag.get("color", "sky")
+    cfg = COLOR_STYLES.get(color, COLOR_STYLES["sky"])
+    return tag["id"], tag["label"], cfg["badge"], cfg["dot"], True
+
+async def index_handler(request):
+    try:
+        with open(HTML_FILE, "r", encoding="utf-8") as f:
+            html = f.read()
+    except Exception as e:
+        html = f"<h1>Erreur: {e}</h1>"
+    return web.Response(text=html, content_type="text/html")
+
+async def api_fans_handler(request):
+    token = request.query.get("token", "")
+    if token != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    chat_states = load_json(STATES_FILE)
+    histories = load_json(HISTORIES_FILE)
+    presence = load_json(USER_PRESENCE_FILE)
+    tags_list = load_tags()
+    tags_dict = {t["id"]: t for t in tags_list}
+    now = time.time()
+    fans = []
+    stats = {"total_fans": len(chat_states), "unread": 0, "followup": 0, "total_revenue": 0}
+    for t in tags_list:
+        stats[t["id"]] = 0
+
+    for uid, state in chat_states.items():
+        sc, sl, bs, dot, is_manual = get_fan_status(state, uid, tags_dict)
+        if sc in stats:
+            stats[sc] += 1
+        
+        p = presence.get(str(uid), {})
+        is_online = bool(p.get("online", False))
+        is_typing = bool(p.get("typing_until", 0) > now)
+
+        # Extraire le dernier message pour la prévisualisation dans la barre latérale
+        user_history = histories.get(str(uid), [])
+        last_msg_snippet = ""
+        last_msg_time = state.get("last_message_time", 0)
+        last_role = ""
+        if user_history:
+            last_msg = user_history[-1]
+            last_msg_time = last_msg.get("timestamp", last_msg_time)
+            last_role = last_msg.get("role", "")
+            last_text = (last_msg.get("content") or "").strip()
+            last_photo = last_msg.get("photo_url")
+
+            prefix = "Miwa: " if last_role == "assistant" else ""
+            if last_photo and not last_text:
+                last_msg_snippet = f"{prefix}📷 Photo"
+            elif last_photo and last_text:
+                last_msg_snippet = f"{prefix}📷 {last_text}"
+            elif last_text:
+                last_msg_snippet = f"{prefix}{last_text}"
+            else:
+                last_msg_snippet = f"{prefix}Message"
+
+        # Règle stricte : si Miwa a envoyé le dernier message ou si marqué comme lu, JAMAIS non lu
+        if last_role == "assistant" or state.get("last_message_from") == "miwa" or state.get("is_read", False):
+            is_unread = False
+        else:
+            is_unread = bool(state.get("last_message_from") == "fan" or last_role == "user")
+
+        if is_unread:
+            stats["unread"] += 1
+
+        prof = state.get("fan_profile", {})
+        try:
+            total_spent = float(state.get("total_spent", prof.get("total_spent", 0)) or 0)
+        except (ValueError, TypeError):
+            total_spent = 0
+        stats["total_revenue"] += total_spent
+
+        followup_date = state.get("followup_date", prof.get("followup_date", ""))
+        followup_note = state.get("followup_note", prof.get("followup_note", ""))
+        if followup_date:
+            stats["followup"] += 1
+
+        fans.append({
+            "user_id": uid,
+            "name": state.get("sender_name") or f"Fan {uid}",
+            "message_count": state.get("message_count", 0),
+            "last_message_time": last_msg_time,
+            "last_message": last_msg_snippet,
+            "status_code": sc,
+            "status_label": sl,
+            "badge_style": bs,
+            "dot_style": dot,
+            "is_manual": is_manual,
+            "profile": prof,
+            "sent_vault_ids": state.get("sent_vault_ids", []),
+            "total_spent": total_spent,
+            "followup_date": followup_date,
+            "followup_note": followup_note,
+            "is_online": is_online,
+            "is_typing": is_typing,
+            "is_unread": is_unread
+        })
+    fans.sort(key=lambda x: x["last_message_time"], reverse=True)
+    return web.json_response({"stats": stats, "fans": fans, "tags": tags_list})
+
+async def api_chat_handler(request):
+    token = request.query.get("token", "")
+    if token != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    uid = request.match_info.get("user_id", "")
+    histories = load_json(HISTORIES_FILE)
+    return web.json_response({"user_id": uid, "history": histories.get(str(uid), [])})
+
+async def api_status_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    user_id = str(body.get("user_id", "")).strip()
+    tag_id = body.get("tag_id") or body.get("status_code", "fan")
+
+    chat_states = load_json(STATES_FILE)
+    if user_id not in chat_states:
+        chat_states[user_id] = {"sender_name": f"Fan {user_id}"}
+    chat_states[user_id]["tag_id"] = tag_id
+    chat_states[user_id]["manual_status"] = tag_id
+    save_json(STATES_FILE, chat_states)
+    return web.json_response({"ok": True})
+
+async def api_tags_handler(request):
+    token = request.query.get("token", "")
+    if token != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    return web.json_response({"tags": load_tags()})
+
+async def api_create_tag_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    label = body.get("label", "").strip()
+    color = body.get("color", "violet").strip()
+    if not label:
+        return web.json_response({"error": "Nom d'étiquette requis"}, status=400)
+    if color not in COLOR_STYLES:
+        color = "violet"
+
+    tags = load_tags()
+    tag_id = re.sub(r'[^a-zA-Z0-9_]', '', label.lower().replace(' ', '_'))
+    if not tag_id or any(t["id"] == tag_id for t in tags):
+        tag_id = f"{tag_id or 'tag'}_{str(int(time.time()))[-4:]}"
+
+    new_tag = {"id": tag_id, "label": label, "color": color, "is_default": False}
+    tags.append(new_tag)
+    save_tags(tags)
+    return web.json_response({"ok": True, "tag": new_tag, "tags": tags})
+
+async def api_delete_tag_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    tag_id = body.get("id", "").strip()
+    if not tag_id:
+        return web.json_response({"error": "ID d'étiquette requis"}, status=400)
+    if tag_id in ("fan", "timewaster", "spender"):
+        return web.json_response({"error": "Impossible de supprimer une étiquette par défaut"}, status=400)
+
+    tags = load_tags()
+    tags = [t for t in tags if t["id"] != tag_id]
+    save_tags(tags)
+
+    chat_states = load_json(STATES_FILE)
+    modified = False
+    for uid, state in chat_states.items():
+        if state.get("tag_id") == tag_id or state.get("manual_status") == tag_id:
+            state["tag_id"] = "fan"
+            state["manual_status"] = "fan"
+            modified = True
+    if modified:
+        save_json(STATES_FILE, chat_states)
+
+    return web.json_response({"ok": True, "tags": tags})
+
+async def api_profile_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    user_id = str(body.get("user_id", "")).strip()
+    new_profile = body.get("profile", {})
+
+    chat_states = load_json(STATES_FILE)
+    if user_id in chat_states:
+        curr = chat_states[user_id].get("fan_profile", {})
+        for k, v in new_profile.items():
+            if v is not None and v != "":
+                curr[k] = v
+            elif k in curr:
+                del curr[k]
+        chat_states[user_id]["fan_profile"] = curr
+        if "total_spent" in new_profile:
+            chat_states[user_id]["total_spent"] = new_profile["total_spent"]
+        if "followup_date" in new_profile:
+            chat_states[user_id]["followup_date"] = new_profile["followup_date"]
+        if "followup_note" in new_profile:
+            chat_states[user_id]["followup_note"] = new_profile["followup_note"]
+        save_json(STATES_FILE, chat_states)
+        return web.json_response({"ok": True, "profile": curr})
+    return web.json_response({"error": "Utilisateur non trouvé"}, status=404)
+
+async def api_send_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    user_id = str(body.get("user_id", "")).strip()
+    message = str(body.get("message", "")).strip()
+    if not user_id or not message:
+        return web.json_response({"error": "user_id et message requis"}, status=400)
+
+    chat_states = load_json(STATES_FILE)
+    user_state = chat_states.get(user_id, {}) if isinstance(chat_states, dict) else {}
+    target_lang = user_state.get("language", "fr")
+
+    import gemini_client
+    actual_telegram_message = message
+    sent_content = None
+
+    if target_lang and target_lang != "fr":
+        try:
+            translated = await gemini_client.gemini_client.translate_to_language(message, target_lang)
+            if translated and translated.strip():
+                actual_telegram_message = translated.strip()
+                sent_content = actual_telegram_message
+        except Exception as e:
+            logger.warning(f"Erreur traduction sortante: {e}")
+
+    # 1. Sauvegarder immédiatement dans conversation_histories.json via gemini_client
+    now_ts = time.time()
+    gemini_client.gemini_client.add_message(
+        user_id,
+        "assistant",
+        message,
+        sent_content=sent_content,
+        lang=target_lang,
+        timestamp=now_ts,
+        read=False
+    )
+
+    # 2. Mettre à jour l'état du chat immédiatement
+    if isinstance(chat_states, dict) and user_id in chat_states:
+        chat_states[user_id]["last_message_from"] = "miwa"
+        chat_states[user_id]["last_message_time"] = now_ts
+        chat_states[user_id]["message_count"] = chat_states[user_id].get("message_count", 0) + 1
+        save_json(STATES_FILE, chat_states)
+
+    # 3. Mettre dans la queue pour l'envoi Telethon
+    queue = load_json(QUEUE_FILE)
+    if not isinstance(queue, list):
+        queue = []
+    queue.append({"user_id": int(user_id), "message": actual_telegram_message, "queued_at": now_ts, "source": "dashboard"})
+    if save_json(QUEUE_FILE, queue):
+        return web.json_response({"ok": True})
+    return web.json_response({"error": "Erreur écriture queue"}, status=500)
+
+async def api_suggest_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    user_id = str(body.get("user_id", "")).strip()
+    if not user_id:
+        return web.json_response({"error": "user_id requis"}, status=400)
+
+    histories = load_json(HISTORIES_FILE)
+    history = histories.get(user_id, [])
+    chat_states = load_json(STATES_FILE)
+    fan_profile = chat_states.get(user_id, {}).get("fan_profile", {})
+
+    import gemini_client
+    try:
+        suggestion = await gemini_client.gemini_client.suggest_reply(
+            user_id=int(user_id),
+            last_messages=history[-3:],
+            fan_profile=fan_profile
+        )
+        return web.json_response({"ok": True, "suggestion": suggestion})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+async def api_payment_links_handler(request):
+    token = request.query.get("token", "")
+    if token != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    links = load_json(PAYMENT_LINKS_FILE)
+    if not isinstance(links, list):
+        links = []
+    return web.json_response({"links": links})
+
+async def api_save_payment_links_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    links = body.get("links", [])
+    if not isinstance(links, list):
+        return web.json_response({"error": "links doit être une liste"}, status=400)
+    if save_json(PAYMENT_LINKS_FILE, links):
+        return web.json_response({"ok": True})
+    return web.json_response({"error": "Erreur écriture"}, status=500)
+
+async def api_mark_read_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    user_id = str(body.get("user_id", "")).strip()
+    chat_states = load_json(STATES_FILE)
+    if user_id in chat_states:
+        chat_states[user_id]["last_message_from"] = "miwa"
+        chat_states[user_id]["is_read"] = True
+        save_json(STATES_FILE, chat_states)
+        return web.json_response({"ok": True})
+    return web.json_response({"error": "Fan introuvable"}, status=404)
+
+async def api_send_media_handler(request):
+    try:
+        body = await request.json()
+    except Exception as e:
+        return web.json_response({"error": f"Invalid payload: {e}"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    user_id = str(body.get("user_id", "")).strip()
+    image_b64 = body.get("image_b64", "").strip()
+    caption = body.get("message", "").strip()
+    orig_filename = body.get("filename", "image.jpg")
+    if not user_id or not image_b64:
+        return web.json_response({"error": "user_id et fichier requis"}, status=400)
+
+    ext = os.path.splitext(orig_filename)[1].lower()
+    if not ext or len(ext) > 6:
+        ext = ".jpg"
+
+    if "," in image_b64:
+        image_b64 = image_b64.split(",", 1)[1]
+
+    import base64
+    try:
+        img_data = base64.b64decode(image_b64)
+    except Exception:
+        return web.json_response({"error": "Fichier base64 invalide"}, status=400)
+
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+    filename = f"miwa_send_{user_id}_{int(time.time())}{ext}"
+    filepath = os.path.join(MEDIA_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(img_data)
+
+    photo_url = f"/media/{filename}"
+    now_ts = time.time()
+
+    import gemini_client
+    gemini_client.gemini_client.add_message(
+        user_id,
+        "assistant",
+        caption,
+        photo_url=photo_url,
+        timestamp=now_ts,
+        read=False
+    )
+
+    chat_states = load_json(STATES_FILE)
+    if isinstance(chat_states, dict) and user_id in chat_states:
+        chat_states[user_id]["last_message_from"] = "miwa"
+        chat_states[user_id]["last_message_time"] = now_ts
+        chat_states[user_id]["message_count"] = chat_states[user_id].get("message_count", 0) + 1
+        save_json(STATES_FILE, chat_states)
+
+    queue = load_json(QUEUE_FILE)
+    if not isinstance(queue, list):
+        queue = []
+    queue.append({
+        "user_id": int(user_id),
+        "message": caption,
+        "media_path": filepath,
+        "queued_at": now_ts,
+        "source": "dashboard"
+    })
+    save_json(QUEUE_FILE, queue)
+
+    return web.json_response({"ok": True, "photo_url": photo_url})
+
+async def api_scripts_handler(request):
+    token = request.query.get("token", "")
+    if token != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    scripts = load_json(SCRIPTS_FILE)
+    if not isinstance(scripts, list):
+        scripts = []
+    return web.json_response({"scripts": scripts})
+
+async def api_save_scripts_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    scripts = body.get("scripts", [])
+    if not isinstance(scripts, list):
+        return web.json_response({"error": "scripts doit être une liste"}, status=400)
+    if save_json(SCRIPTS_FILE, scripts):
+        return web.json_response({"ok": True})
+    return web.json_response({"error": "Erreur écriture scripts"}, status=500)
+
+async def api_vault_handler(request):
+    token = request.query.get("token", "")
+    if token != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    items = load_json(VAULT_FILE)
+    if not isinstance(items, list):
+        items = []
+    return web.json_response({"items": items})
+
+async def api_vault_upload_handler(request):
+    try:
+        body = await request.json()
+    except Exception as e:
+        return web.json_response({"error": f"Invalid JSON: {e}"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    title = body.get("title", "").strip() or "Média Vault"
+    category = body.get("category", "Général").strip() or "Général"
+    file_b64 = body.get("file_b64", "").strip()
+    filename_orig = body.get("filename", "media.jpg")
+
+    if not file_b64:
+        return web.json_response({"error": "Fichier requis"}, status=400)
+
+    ext = os.path.splitext(filename_orig)[1].lower()
+    if not ext or len(ext) > 6:
+        ext = ".jpg"
+
+    if "," in file_b64:
+        file_b64 = file_b64.split(",", 1)[1]
+
+    import base64
+    try:
+        data = base64.b64decode(file_b64)
+    except Exception:
+        return web.json_response({"error": "Base64 invalide"}, status=400)
+
+    import uuid
+    uid_media = f"vault_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+    filename = f"{uid_media}{ext}"
+    filepath = os.path.join(VAULT_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(data)
+
+    media_type = "video" if ext in [".mp4", ".mov", ".webm", ".mkv"] else "image"
+    url = f"/vault/{filename}"
+    new_item = {
+        "id": uid_media,
+        "title": title,
+        "category": category,
+        "url": url,
+        "media_type": media_type,
+        "filename": filename,
+        "size": len(data),
+        "created_at": time.time()
+    }
+
+    items = load_json(VAULT_FILE)
+    if not isinstance(items, list):
+        items = []
+    items.insert(0, new_item)
+    save_json(VAULT_FILE, items)
+
+    return web.json_response({"ok": True, "item": new_item})
+
+async def api_vault_delete_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    media_id = body.get("id")
+    items = load_json(VAULT_FILE)
+    if not isinstance(items, list):
+        items = []
+    
+    found = None
+    remaining = []
+    for item in items:
+        if item.get("id") == media_id:
+            found = item
+        else:
+            remaining.append(item)
+
+    if found:
+        fn = found.get("filename")
+        if fn:
+            fp = os.path.join(VAULT_DIR, fn)
+            if os.path.exists(fp):
+                try:
+                    os.remove(fp)
+                except Exception:
+                    pass
+        save_json(VAULT_FILE, remaining)
+        return web.json_response({"ok": True})
+    return web.json_response({"error": "Élément non trouvé"}, status=404)
+
+async def api_vault_send_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    user_id = str(body.get("user_id", "")).strip()
+    media_id = body.get("id")
+    caption = body.get("message", "").strip()
+
+    if not user_id or not media_id:
+        return web.json_response({"error": "user_id et id média requis"}, status=400)
+
+    items = load_json(VAULT_FILE)
+    target_item = next((item for item in items if item.get("id") == media_id), None)
+    if not target_item:
+        return web.json_response({"error": "Média introuvable dans le Vault"}, status=404)
+
+    filepath = os.path.join(VAULT_DIR, target_item["filename"])
+    if not os.path.exists(filepath):
+        return web.json_response({"error": "Fichier physique introuvable sur le serveur"}, status=404)
+
+    now_ts = time.time()
+    photo_url = target_item["url"]
+
+    import gemini_client
+    gemini_client.gemini_client.add_message(
+        user_id,
+        "assistant",
+        caption,
+        photo_url=photo_url,
+        timestamp=now_ts,
+        read=False
+    )
+
+    chat_states = load_json(STATES_FILE)
+    if isinstance(chat_states, dict) and user_id in chat_states:
+        chat_states[user_id]["last_message_from"] = "miwa"
+        chat_states[user_id]["last_message_time"] = now_ts
+        chat_states[user_id]["message_count"] = chat_states[user_id].get("message_count", 0) + 1
+        sent_vault = chat_states[user_id].setdefault("sent_vault_ids", [])
+        if media_id not in sent_vault:
+            sent_vault.append(media_id)
+        save_json(STATES_FILE, chat_states)
+
+    queue = load_json(QUEUE_FILE)
+    if not isinstance(queue, list):
+        queue = []
+    queue.append({
+        "user_id": int(user_id),
+        "message": caption,
+        "media_path": filepath,
+        "queued_at": now_ts,
+        "source": "vault"
+    })
+    save_json(QUEUE_FILE, queue)
+
+    return web.json_response({"ok": True, "photo_url": photo_url})
+
+def load_rates_rules():
+    data = load_json(RATES_RULES_FILE)
+    if not isinstance(data, dict) or not data.get("rates"):
+        save_json(RATES_RULES_FILE, DEFAULT_RATES_RULES)
+        return DEFAULT_RATES_RULES
+    return data
+
+async def api_rates_rules_get_handler(request):
+    token = request.query.get("token", "")
+    if token != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    return web.json_response(load_rates_rules())
+
+async def api_rates_rules_save_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    rates = body.get("rates", [])
+    rules = body.get("rules", [])
+    data = {"rates": rates, "rules": rules}
+    if save_json(RATES_RULES_FILE, data):
+        return web.json_response({"ok": True})
+    return web.json_response({"error": "Erreur écriture"}, status=500)
+
+def make_app():
+    # 100 Mo max pour supporter l'envoi de photos et vidéos sans erreur 413
+    app = web.Application(client_max_size=100 * 1024 * 1024)
+    app.router.add_static("/media", MEDIA_DIR)
+    app.router.add_static("/vault", VAULT_DIR)
+    app.router.add_get("/", index_handler)
+    app.router.add_get("/api/fans", api_fans_handler)
+    app.router.add_get("/api/chat/{user_id}", api_chat_handler)
+    app.router.add_post("/api/status", api_status_handler)
+    app.router.add_get("/api/tags", api_tags_handler)
+    app.router.add_post("/api/tags/create", api_create_tag_handler)
+    app.router.add_post("/api/tags/delete", api_delete_tag_handler)
+    app.router.add_post("/api/profile", api_profile_handler)
+    app.router.add_post("/api/send", api_send_handler)
+    app.router.add_post("/api/send-media", api_send_media_handler)
+    app.router.add_post("/api/mark-read", api_mark_read_handler)
+    app.router.add_post("/api/suggest", api_suggest_handler)
+    app.router.add_get("/api/payment-links", api_payment_links_handler)
+    app.router.add_post("/api/payment-links", api_save_payment_links_handler)
+    app.router.add_get("/api/scripts", api_scripts_handler)
+    app.router.add_post("/api/scripts", api_save_scripts_handler)
+    app.router.add_get("/api/vault", api_vault_handler)
+    app.router.add_post("/api/vault/upload", api_vault_upload_handler)
+    app.router.add_post("/api/vault/delete", api_vault_delete_handler)
+    app.router.add_post("/api/vault/send", api_vault_send_handler)
+    app.router.add_get("/api/rates-rules", api_rates_rules_get_handler)
+    app.router.add_post("/api/rates-rules", api_rates_rules_save_handler)
+    return app
+
+if __name__ == "__main__":
+    app = make_app()
+    print(f"Miwa Dashboard sur http://0.0.0.0:{PORT}")
+    web.run_app(app, host="0.0.0.0", port=PORT)

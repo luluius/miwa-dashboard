@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environnements virtuels
+venv/
+venv_build/
+env/
+.venv/
+
+# Fichiers sensibles — NE JAMAIS pousser
+*.session
+*.session-journal
+config.py
+userbot.log
+*.log
+
+# Données locales — resteront sur le VPS
+chat_states.json
+conversation_histories.json
+vault_media.json
+custom_tags.json
+scripts.json
+rates_rules.json
+payment_links.json
+
+# PyInstaller
+windows_app/build/
+windows_app/dist/
+*.spec.bak
+
+# Divers
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

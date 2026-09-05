@@ -1,0 +1,69 @@
+name: Build MiwaDashboard.exe (Windows)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'windows_app/**'
+      - '.github/workflows/build-windows.yml'
+  workflow_dispatch:   # Permet de lancer manuellement depuis l'interface GitHub
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installation de Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'x64'
+
+      - name: Installation des dépendances
+        working-directory: windows_app
+        run: |
+          python -m pip install --upgrade pip
+          pip install pywebview pyinstaller pillow
+
+      - name: Compilation avec PyInstaller
+        working-directory: windows_app
+        run: |
+          pyinstaller MiwaDashboard.spec --clean --noconfirm
+
+      - name: Vérification du .exe généré
+        working-directory: windows_app
+        run: |
+          dir dist
+          echo "Taille du exe :"
+          (Get-Item dist\MiwaDashboard.exe).length / 1MB
+        shell: pwsh
+
+      - name: Upload de l'artefact (téléchargeable directement)
+        uses: actions/upload-artifact@v4
+        with:
+          name: MiwaDashboard-Windows
+          path: windows_app/dist/MiwaDashboard.exe
+          retention-days: 30
+
+      - name: Création d'une Release GitHub automatique
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: latest-build
+          name: "MiwaDashboard — Dernière version"
+          body: |
+            ## 🖥️ MiwaDashboard pour Windows
+
+            Télécharge `MiwaDashboard.exe` ci-dessous et lance-le directement.
+
+            > **Prérequis** : Windows 10 ou 11, connexion internet.
+            > Si Windows Defender bloque : clic droit → Propriétés → Débloquer.
+          files: windows_app/dist/MiwaDashboard.exe
+          make_latest: true
+          overwrite: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

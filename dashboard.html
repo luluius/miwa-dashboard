@@ -1,0 +1,2391 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miwa · Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { font-family: 'Inter', -apple-system, sans-serif; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1e2030; border-radius: 4px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .fan-card { border-left: 2px solid transparent; }
+        .fan-card:hover { background: #0f1018; }
+        .fan-card.active { background: #0f1018; border-left-color: #6d28d9; }
+    </style>
+</head>
+<body class="bg-[#0a0b0f] text-slate-300 h-screen w-screen overflow-hidden flex flex-col">
+
+<!-- Auth Modal -->
+<div id="authModal" style="display:flex;" class="fixed inset-0 bg-black/90 z-50 items-center justify-center">
+    <div class="bg-[#0f1018] border border-[#1e2030] p-8 rounded-2xl w-80 shadow-2xl">
+        <div class="mb-6">
+            <div class="text-white font-semibold text-sm mb-1">Miwa Dashboard</div>
+            <div class="text-slate-500 text-xs">Accès restreint</div>
+        </div>
+        <div class="space-y-3">
+            <div class="relative">
+                <input type="password" id="authPassword" placeholder="Mot de passe"
+                    autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false"
+                    onkeydown="if(event.key==='Enter') handleAuth(event);"
+                    class="w-full pl-3 pr-9 py-2.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500 transition">
+                <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 text-xs">
+                    <i id="eyeIcon" class="fa-regular fa-eye"></i>
+                </button>
+            </div>
+            <div id="authError" class="text-[11px] text-red-400 hidden">Mot de passe incorrect</div>
+            <button type="button" onclick="handleAuth(event)"
+                class="w-full py-2.5 bg-white text-black font-medium rounded-lg text-xs hover:bg-slate-100 transition cursor-pointer">
+                Accéder
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Status / Tags Modal -->
+<div id="statusModal" style="display:none;" class="fixed inset-0 bg-black/80 z-40 items-center justify-center p-4">
+    <div class="bg-[#0f1018] border border-[#1e2030] p-5 rounded-2xl w-full max-w-sm shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-[#1a1b26] pb-3">
+            <div>
+                <span class="text-sm font-semibold text-white">Choisir une étiquette</span>
+                <div id="statusModalFanName" class="text-[11px] text-slate-500 mt-0.5">Pour ce fan</div>
+            </div>
+            <button onclick="closeStatusModal()" class="text-slate-500 hover:text-slate-300 text-sm p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- Liste des étiquettes existantes -->
+        <div>
+            <label class="text-[11px] font-medium text-slate-400 block mb-2">Étiquettes disponibles</label>
+            <div id="tagsListContainer" class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                <!-- Rendu dynamique des tags -->
+            </div>
+        </div>
+
+        <!-- Section Créer une nouvelle étiquette -->
+        <div class="pt-3 border-t border-[#1a1b26] space-y-2.5">
+            <span class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-plus text-[10px] text-violet-400"></i> Nouvelle étiquette personnalisée
+            </span>
+            <input type="text" id="newTagNameInput" placeholder="Nom de l'étiquette (ex: VIP, Curieux...)"
+                class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500">
+
+            <div>
+                <span class="text-[10px] text-slate-500 block mb-1.5">Choisir une couleur :</span>
+                <div id="colorPalette" class="flex items-center gap-2 flex-wrap">
+                    <!-- Rendu dynamique de la palette -->
+                </div>
+            </div>
+
+            <button onclick="createNewTagAndApply()" class="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-md shadow-violet-900/30 active:scale-[0.98]">
+                <i class="fa-solid fa-check text-[11px]"></i> Créer et appliquer
+            </button>
+        </div>
+
+        <div class="flex items-center justify-end pt-1 border-t border-[#1a1b26]">
+            <button onclick="closeStatusModal()" class="px-4 py-1.5 text-xs text-slate-400 hover:text-white">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Emoji Settings Modal -->
+<div id="emojiSettingsModal" style="display:none;" class="fixed inset-0 bg-black/80 z-40 items-center justify-center p-4">
+    <div class="bg-[#0f1018] border border-[#1e2030] p-5 rounded-2xl w-full max-w-md shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-[#1a1b26] pb-3">
+            <div>
+                <span class="text-sm font-semibold text-white">Personnaliser les Emojis rapides</span>
+                <div class="text-[11px] text-slate-500 mt-0.5">Modifie ou ajoute les emojis qui apparaissent dans ta barre</div>
+            </div>
+            <button onclick="closeEmojiSettingsModal()" class="text-slate-500 hover:text-slate-300 text-sm p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div>
+            <label class="text-[11px] font-medium text-slate-400 block mb-1.5">Tes emojis actuels (séparés par un espace)</label>
+            <input type="text" id="customEmojiInput" class="w-full px-3 py-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-sm text-white focus:outline-none focus:border-violet-500">
+        </div>
+
+        <div>
+            <span class="text-[10px] text-slate-500 block mb-1.5">Clique sur une suggestion pour l'ajouter :</span>
+            <div id="suggestedEmojiPicker" class="flex items-center gap-1.5 flex-wrap p-2 bg-[#0a0b0f] rounded-xl border border-[#181924] max-h-36 overflow-y-auto">
+                <!-- Rendu des suggestions -->
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-[#1a1b26]">
+            <button onclick="resetDefaultEmojis()" class="text-xs text-slate-500 hover:text-slate-300">Réinitialiser</button>
+            <div class="flex items-center gap-2">
+                <button onclick="closeEmojiSettingsModal()" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white">Annuler</button>
+                <button onclick="saveCustomEmojis()" class="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs rounded-lg transition shadow-md shadow-violet-900/30">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Profile Modal -->
+<!-- Fiche Fan CRM Modal -->
+<div id="profileModal" style="display:none;" class="fixed inset-0 bg-black/80 z-40 items-center justify-center p-4">
+    <div class="bg-[#0f1018] border border-[#1e2030] p-6 rounded-2xl w-full max-w-lg shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+        <div class="flex items-center justify-between pb-2 border-b border-[#1e2030] shrink-0">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-id-card text-sky-400 text-xs"></i>
+                <span class="text-sm font-medium text-white">Fiche CRM & Ventes du Fan</span>
+            </div>
+            <button onclick="closeProfileModal()" class="text-slate-500 hover:text-slate-300 text-xs"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto space-y-3 text-xs pr-1">
+            <!-- Section Identité -->
+            <div class="space-y-2">
+                <div class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider">Identité & Situation</div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div class="col-span-2">
+                        <label class="text-slate-500 mb-1 block text-[10px]">Prénom réel</label>
+                        <input type="text" id="profPrenom" placeholder="Marc, Alex..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-slate-500 mb-1 block text-[10px]">Âge</label>
+                        <input type="text" id="profAge" placeholder="38 ans" class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-slate-500 mb-1 block text-[10px]">Ville / Pays</label>
+                        <input type="text" id="profVille" placeholder="Lyon, Suisse..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-slate-500 mb-1 block text-[10px]">Métier / Situation personnelle</label>
+                    <input type="text" id="profMetier" placeholder="Ingénieur, célibataire, deux chats..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- Section Ventes & Valeur -->
+            <div class="pt-2 border-t border-[#1a1b24] space-y-2">
+                <div class="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>Ventes & Valeur Client (LTV)</span>
+                    <span id="profSpentDisplay" class="text-emerald-400 font-bold"></span>
+                </div>
+                <div>
+                    <label class="text-slate-500 mb-1 block text-[10px]">Total Dépensé (€)</label>
+                    <div class="relative">
+                        <input type="number" id="profTotalSpent" placeholder="0" min="0" step="1"
+                            class="w-full pl-7 pr-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white font-medium focus:border-emerald-500 focus:outline-none">
+                        <span class="absolute left-2.5 top-1.5 text-slate-500 text-xs">€</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Psychologie & Fétiches -->
+            <div class="pt-2 border-t border-[#1a1b24] space-y-2">
+                <div class="text-[11px] font-semibold text-violet-400 uppercase tracking-wider">Psychologie & Préférences</div>
+                <div>
+                    <label class="text-slate-500 mb-1 block text-[10px]">Fétiches / Ce qui le fait craquer</label>
+                    <input type="text" id="profFetiches" placeholder="Lingerie rouge, pieds, domination douce, compliments..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="text-slate-500 mb-1 block text-[10px]">Limites strictes / Ce qu'il déteste</label>
+                    <input type="text" id="profLimites" placeholder="Pas de vulgarité, pas de sport, ne pas parler d'argent brutalement..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="text-slate-500 mb-1 block text-[10px]">Notes libres pour l'équipe</label>
+                    <textarea id="profNotes" rows="2" placeholder="Informations complémentaires, anecdotes..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none resize-none"></textarea>
+                </div>
+            </div>
+
+            <!-- Section Relance (Follow-up) -->
+            <div class="pt-2 border-t border-[#1a1b24] space-y-2">
+                <div class="text-[11px] font-semibold text-amber-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>Programmation de Relance</span>
+                    <button type="button" onclick="clearFollowup()" class="text-[10px] text-slate-500 hover:text-red-400 transition">Effacer la relance</button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-slate-500 mb-1 block text-[10px]">Date de relance</label>
+                        <input type="date" id="profFollowupDate" class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-amber-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-slate-500 mb-1 block text-[10px]">Note de relance</label>
+                        <input type="text" id="profFollowupNote" placeholder="Proposer pack lingerie à 18h..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-amber-500 focus:outline-none">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-[#1e2030] shrink-0">
+            <button onclick="closeProfileModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-white transition">Annuler</button>
+            <button onclick="saveProfile()" class="px-4 py-1.5 bg-white text-black text-xs font-semibold rounded-lg hover:bg-slate-200 transition flex items-center gap-1.5">
+                <i class="fa-solid fa-floppy-disk text-[10px]"></i> Enregistrer la fiche
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Rates & Rules Modal -->
+<div id="ratesRulesModal" style="display:none;" class="fixed inset-0 bg-black/85 z-40 items-center justify-center p-4">
+    <div class="bg-[#0f1018] border border-[#1e2030] p-6 rounded-2xl w-full max-w-2xl shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between pb-2 border-b border-[#1e2030] shrink-0">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-tags text-emerald-400 text-xs"></i>
+                <span class="text-sm font-medium text-white">Tarifs officiels & Règles de discussion</span>
+            </div>
+            <button onclick="closeRatesRulesModal()" class="text-slate-500 hover:text-slate-300 text-xs"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- Onglets -->
+        <div class="flex items-center gap-2 border-b border-[#1e2030] pb-2 shrink-0">
+            <button onclick="setRatesRulesTab('rates')" id="ratesTabBtn" class="px-3 py-1 rounded-lg text-xs font-medium bg-emerald-600 text-white transition">🏷️ Grille des Tarifs</button>
+            <button onclick="setRatesRulesTab('rules')" id="rulesTabBtn" class="px-3 py-1 rounded-lg text-xs font-medium bg-[#161722] text-slate-400 hover:text-white transition">📋 Règles d'or du Chatting</button>
+        </div>
+
+        <!-- Contenu Tarifs -->
+        <div id="ratesTabContent" class="flex-1 overflow-y-auto space-y-3 pr-1">
+            <div id="ratesListContainer" class="space-y-2"></div>
+            <div class="p-3 rounded-xl bg-[#0a0b0f] border border-[#1e2030] space-y-2">
+                <div class="text-[11px] font-semibold text-slate-400">Ajouter un nouveau tarif</div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input type="text" id="newRateTitle" placeholder="Intitulé (ex: Vidéo lingerie 30s)" class="sm:col-span-1 px-3 py-1.5 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white focus:outline-none focus:border-slate-500">
+                    <input type="text" id="newRatePrice" placeholder="Prix (ex: 30 €)" class="px-3 py-1.5 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white focus:outline-none focus:border-slate-500">
+                    <input type="text" id="newRateDesc" placeholder="Description courte" class="px-3 py-1.5 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white focus:outline-none focus:border-slate-500">
+                </div>
+                <button onclick="addNewRate()" class="px-3 py-1.5 bg-[#161722] hover:bg-[#202232] border border-[#242738] text-slate-200 text-xs font-medium rounded-lg transition flex items-center gap-1">
+                    <i class="fa-solid fa-plus text-[9px]"></i> Ajouter ce tarif
+                </button>
+            </div>
+        </div>
+
+        <!-- Contenu Règles -->
+        <div id="rulesTabContent" class="hidden flex-1 overflow-y-auto space-y-3 pr-1">
+            <div id="rulesListContainer" class="space-y-2"></div>
+            <div class="p-3 rounded-xl bg-[#0a0b0f] border border-[#1e2030] space-y-2">
+                <div class="text-[11px] font-semibold text-slate-400">Ajouter une nouvelle règle</div>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="newRuleText" placeholder="Ex: Ne jamais promettre d'appel vocal imprévu" class="flex-1 px-3 py-1.5 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white focus:outline-none focus:border-slate-500">
+                    <button onclick="addNewRule()" class="px-3 py-1.5 bg-[#161722] hover:bg-[#202232] border border-[#242738] text-slate-200 text-xs font-medium rounded-lg transition flex items-center gap-1 shrink-0">
+                        <i class="fa-solid fa-plus text-[9px]"></i> Ajouter
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pied de modal -->
+        <div class="flex items-center justify-between pt-2 border-t border-[#1e2030] shrink-0">
+            <button onclick="insertRatesSummaryInChat()" class="px-3 py-1.5 bg-[#1a1c29] hover:bg-[#222436] border border-[#2a2d40] text-emerald-300 text-xs font-medium rounded-lg transition flex items-center gap-1.5" title="Insérer le récapitulatif des prix dans le message">
+                <i class="fa-solid fa-share text-[10px]"></i> Insérer les prix dans le chat
+            </button>
+            <div class="flex items-center gap-2">
+                <button onclick="closeRatesRulesModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-white transition">Fermer</button>
+                <button onclick="saveRatesRules()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-floppy-disk text-[10px]"></i> Sauvegarder
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Links Modal -->
+<div id="paymentLinksModal" style="display:none;" class="fixed inset-0 bg-black/80 z-40 items-center justify-center p-4">
+    <div class="bg-[#0f1018] border border-[#1e2030] p-6 rounded-2xl w-full max-w-xl shadow-2xl space-y-4">
+        <div class="flex items-center justify-between pb-2 border-b border-[#1e2030]">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-link text-violet-400 text-xs"></i>
+                <span class="text-sm font-medium text-white">Liens de vente & paiement</span>
+            </div>
+            <button onclick="closePaymentLinksModal()" class="text-slate-500 hover:text-slate-300 text-xs"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <!-- Liste des liens enregistrés -->
+        <div id="paymentLinksList" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+            <div class="text-center text-slate-600 text-xs py-4">Chargement des liens...</div>
+        </div>
+
+        <!-- Formulaire d'ajout -->
+        <div class="pt-3 border-t border-[#1e2030] space-y-2">
+            <div class="text-[11px] font-medium text-slate-400">Ajouter un nouveau lien</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input type="text" id="newLinkTitle" placeholder="Titre (ex: VIP Uncove 15€, Pack photos...)"
+                    class="w-full px-3 py-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500">
+                <input type="url" id="newLinkUrl" placeholder="URL (ex: https://uncove.com/...)"
+                    class="w-full px-3 py-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500">
+            </div>
+            <button onclick="saveNewPaymentLink()"
+                class="w-full py-2 bg-[#161722] hover:bg-[#202232] border border-[#242738] text-slate-200 text-xs font-medium rounded-lg transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-plus text-[10px]"></i> Enregistrer ce lien
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts Modal -->
+<div id="scriptsModal" style="display:none;" class="fixed inset-0 bg-black/85 z-40 items-center justify-center p-4">
+    <div class="bg-[#0f1018] border border-[#1e2030] p-6 rounded-2xl w-full max-w-xl shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between pb-2 border-b border-[#1e2030] shrink-0">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-scroll text-amber-400 text-xs"></i>
+                <span class="text-sm font-medium text-white">Scripts & Modèles de discussion</span>
+            </div>
+            <button onclick="closeScriptsModal()" class="text-slate-500 hover:text-slate-300 text-xs"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- Filtres catégories de scripts -->
+        <div id="scriptsCategoryFilters" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 py-1">
+            <button onclick="setScriptCategoryFilter('all')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] font-medium bg-white text-black whitespace-nowrap" data-cat="all">Tous</button>
+            <button onclick="setScriptCategoryFilter('Accroche')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="Accroche">Accroche</button>
+            <button onclick="setScriptCategoryFilter('Séduction')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="Séduction">Séduction</button>
+            <button onclick="setScriptCategoryFilter('Vente Uncove')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="Vente Uncove">Vente Uncove</button>
+            <button onclick="setScriptCategoryFilter('Relance')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="Relance">Relance</button>
+            <button onclick="setScriptCategoryFilter('Objection')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="Objection">Objection</button>
+        </div>
+
+        <!-- Liste des scripts -->
+        <div id="scriptsList" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[160px]">
+            <div class="text-center text-slate-600 text-xs py-4">Chargement des scripts...</div>
+        </div>
+
+        <!-- Formulaire d'ajout de script -->
+        <div class="pt-3 border-t border-[#1e2030] shrink-0 space-y-2">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-medium text-slate-400">Ajouter un nouveau script</span>
+                <span class="text-[10px] text-slate-600">Variables : {prenom} · {lien}</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input type="text" id="newScriptTitle" placeholder="Titre du script..."
+                    class="sm:col-span-2 px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500">
+                <select id="newScriptCategory"
+                    class="px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white focus:outline-none focus:border-slate-500">
+                    <option value="Accroche">Accroche</option>
+                    <option value="Séduction">Séduction</option>
+                    <option value="Vente Uncove">Vente Uncove</option>
+                    <option value="Relance">Relance</option>
+                    <option value="Objection">Objection</option>
+                    <option value="Autre">Autre</option>
+                </select>
+            </div>
+            <textarea id="newScriptContent" rows="2" placeholder="Contenu du script (ex: Coucou {prenom} ! Tu fais quoi de beau ?)"
+                class="w-full px-3 py-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 resize-none focus:outline-none focus:border-slate-500"></textarea>
+            <button onclick="saveNewScript()"
+                class="w-full py-2 bg-[#161722] hover:bg-[#202232] border border-[#242738] text-slate-200 text-xs font-medium rounded-lg transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-plus text-[10px]"></i> Enregistrer ce script
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Cloud Vault Média Modal -->
+<div id="vaultModal" style="display:none;" class="fixed inset-0 bg-black/85 z-40 items-center justify-center p-4">
+    <div class="bg-[#0f1018] border border-[#1e2030] p-6 rounded-2xl w-full max-w-4xl shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+        <div class="flex items-center justify-between pb-2 border-b border-[#1e2030] shrink-0">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-cloud text-sky-400 text-sm"></i>
+                <div>
+                    <span class="text-sm font-semibold text-white">Cloud Vault Média</span>
+                    <span class="text-[11px] text-slate-500 ml-2">Bibliothèque permanente de Miwa</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleVaultUploadBox()" id="toggleUploadBtn" class="px-2.5 py-1.5 rounded-lg bg-white text-black font-medium text-xs hover:bg-slate-200 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-cloud-arrow-up text-[11px]"></i> Importer
+                </button>
+                <button onclick="closeVaultModal()" class="text-slate-500 hover:text-slate-300 text-xs ml-2"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+        </div>
+
+        <!-- Section Upload dans le Vault (repliable) -->
+        <div id="vaultUploadBox" class="hidden p-3.5 rounded-xl bg-[#0a0b0f] border border-[#1e2030] space-y-3 shrink-0">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-slate-200">Ajouter des médias au Vault</span>
+                <span class="text-[10px] text-slate-500">Photos et vidéos (sélection multiple possible, jusqu'à 100 Mo)</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input type="text" id="vaultItemTitle" placeholder="Titre (ex: Selfie réveil, Vidéo lingerie...)"
+                    class="sm:col-span-2 px-3 py-2 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500">
+                <input type="text" id="vaultItemCategory" placeholder="Catégorie (ex: Privé, Selfies, Uncove...)"
+                    class="px-3 py-2 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500">
+            </div>
+            <div class="flex items-center gap-2">
+                <input type="file" id="vaultFileInput" accept="image/*,video/*" multiple class="text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-[#1e2030] file:text-slate-200 hover:file:bg-[#282b40]">
+                <button onclick="uploadToVault()" id="vaultUploadBtn" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs rounded-lg transition shrink-0 flex items-center gap-1.5">
+                    <i class="fa-solid fa-upload text-[10px]"></i> Sauvegarder dans le Cloud
+                </button>
+            </div>
+        </div>
+
+        <!-- Filtres catégories du Vault -->
+        <div class="flex items-center justify-between shrink-0 gap-2">
+            <div id="vaultCategoryFilters" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                <button onclick="setVaultCategoryFilter('all')" class="vault-filter-btn px-2.5 py-1 rounded text-[10px] font-medium bg-white text-black whitespace-nowrap" data-cat="all">Tous</button>
+                <button onclick="setVaultCategoryFilter('unseen')" class="vault-filter-btn px-2.5 py-1 rounded text-[10px] text-emerald-400 hover:text-white whitespace-nowrap font-medium" data-cat="unseen">✨ Inédits pour ce fan</button>
+                <button onclick="setVaultCategoryFilter('image')" class="vault-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="image">📷 Photos</button>
+                <button onclick="setVaultCategoryFilter('video')" class="vault-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="video">🎥 Vidéos</button>
+            </div>
+            <span id="vaultItemsCount" class="text-[10px] text-slate-500 shrink-0">0 média(s)</span>
+        </div>
+
+        <!-- Galerie des médias du Vault -->
+        <div id="vaultGallery" class="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pr-1 min-h-[220px]">
+            <div class="col-span-full text-center text-slate-600 text-xs py-8">Chargement de la bibliothèque...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Main layout -->
+<div class="flex-1 min-h-0 flex overflow-hidden">
+
+    <!-- Sidebar : Répertoire -->
+    <div class="w-96 md:w-[400px] shrink-0 border-r border-[#1a1b23] flex flex-col overflow-hidden">
+        <div class="p-3 border-b border-[#1a1b23] space-y-2">
+            <div class="flex items-center gap-2">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-[11px] text-slate-600"></i>
+                    <input type="text" id="searchInput" oninput="applyFilters()" placeholder="Rechercher..."
+                        class="w-full pl-8 pr-3 py-2 bg-transparent border border-[#1a1b23] rounded-lg text-xs text-white placeholder-slate-700 focus:outline-none focus:border-slate-700 transition">
+                </div>
+                <button onclick="openVaultModal()" class="px-2.5 py-2 rounded-lg border border-sky-500/30 bg-sky-500/10 text-[11px] text-sky-300 hover:bg-sky-500/20 transition flex items-center gap-1 shrink-0" title="Cloud Vault Média">
+                    <i class="fa-solid fa-cloud text-[11px]"></i>
+                </button>
+                <button onclick="logout()" class="p-2 text-slate-600 hover:text-slate-300 transition text-xs shrink-0" title="Déconnexion">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                </button>
+            </div>
+            <div id="filterButtonsContainer" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
+                <button onclick="setFilter('all')" class="filter-btn px-2.5 py-1 rounded text-[10px] font-medium whitespace-nowrap bg-white text-black" data-filter="all">Tous</button>
+                <button onclick="setFilter('unread')" class="filter-btn px-2.5 py-1 rounded text-[10px] text-violet-400 hover:text-violet-200 whitespace-nowrap flex items-center gap-1.5" data-filter="unread">
+                    <span>● Non lus</span>
+                    <span id="unreadFilterBadge" class="hidden min-w-[17px] h-4 px-1 rounded-full bg-violet-600 text-white text-[9px] font-bold flex items-center justify-center">0</span>
+                </button>
+                <button onclick="setFilter('followup')" class="filter-btn px-2.5 py-1 rounded text-[10px] text-amber-400 hover:text-amber-200 whitespace-nowrap flex items-center gap-1.5" data-filter="followup">
+                    <span>⏰ Relances</span>
+                    <span id="followupFilterBadge" class="hidden min-w-[17px] h-4 px-1 rounded-full bg-amber-600 text-white text-[9px] font-bold flex items-center justify-center">0</span>
+                </button>
+                <div id="dynamicTagFilterButtons" class="flex items-center gap-1.5"></div>
+            </div>
+        </div>
+        <div id="fansList" class="flex-1 overflow-y-auto py-2">
+            <div class="p-6 text-center text-slate-700 text-xs">Chargement...</div>
+        </div>
+    </div>
+
+    <!-- Chat area -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- Chat topbar -->
+        <div class="h-11 px-4 border-b border-[#1a1b23] flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="relative shrink-0">
+                    <div id="chatAvatar" class="w-7 h-7 rounded-lg bg-[#1a1b23] flex items-center justify-center font-semibold text-[11px] text-slate-400">?</div>
+                    <span id="chatOnlineDot" class="hidden absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#0a0b0f]" title="En ligne"></span>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span id="chatTitle" class="text-sm font-medium text-white truncate">Sélectionne un fan</span>
+                        <span id="chatBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-medium border shrink-0"></span>
+                        <span id="chatTotalSpentBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-950/60 text-emerald-300 border border-emerald-800/40 shrink-0 ml-1">💰 0 €</span>
+                        <span id="chatFollowupBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-950/60 text-amber-300 border border-amber-800/40 shrink-0 ml-1">⏰ Relance</span>
+                    </div>
+                    <div id="chatPresenceText" class="text-[10px] text-slate-500 leading-none mt-0.5"></div>
+                </div>
+            </div>
+            <div id="chatHeaderActions" class="hidden flex items-center gap-2 shrink-0">
+                <div id="shiftTrackerBar" class="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#0e1017] border border-[#1e2030] text-[10px] text-slate-400 font-mono">
+                    <span title="Temps de shift actif" class="flex items-center gap-1 text-slate-300"><i class="fa-solid fa-stopwatch text-sky-400"></i> <span id="shiftTimer">00:00</span></span>
+                    <span class="text-slate-700">|</span>
+                    <span title="Messages envoyés cette session" class="flex items-center gap-1 text-slate-300"><i class="fa-solid fa-paper-plane text-violet-400"></i> <span id="shiftMsgCount">0</span> msg</span>
+                    <span class="text-slate-700">|</span>
+                    <span title="Liens envoyés cette session" class="flex items-center gap-1 text-slate-300"><i class="fa-solid fa-link text-emerald-400"></i> <span id="shiftLinkCount">0</span> liens</span>
+                </div>
+                <button onclick="markAsRead()" id="markReadBtn" class="hidden px-2.5 py-1.5 rounded-lg border border-violet-500/40 bg-violet-600/20 text-[11px] text-violet-300 hover:bg-violet-600/30 transition flex items-center gap-1.5" title="Marquer comme lu">
+                    <i class="fa-solid fa-check-double text-[10px]"></i> Lu
+                </button>
+                <button onclick="openStatusModal()" class="px-2.5 py-1.5 rounded-lg border border-[#1e2030] text-[11px] text-slate-400 hover:text-slate-200 hover:border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-tag text-[10px]"></i> Étiquette
+                </button>
+                <button onclick="openProfileModal()" class="px-2.5 py-1.5 rounded-lg border border-[#1e2030] text-[11px] text-slate-400 hover:text-slate-200 hover:border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-user text-[10px]"></i> Fiche CRM
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="chatMessages" class="flex-1 px-4 py-3 overflow-y-auto space-y-2">
+            <div class="h-full flex flex-col items-center justify-center text-slate-700 text-xs space-y-2">
+                <i class="fa-regular fa-comment text-2xl"></i>
+                <span>Aucune conversation sélectionnée</span>
+            </div>
+        </div>
+
+        <!-- Send box -->
+        <div id="sendMessageBox" class="hidden border-t border-[#1a1b23] p-3 shrink-0 space-y-2">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="suggestReply()" id="suggestBtn"
+                        class="px-2.5 py-1 rounded border border-[#1e2030] text-[10px] text-slate-400 hover:text-slate-200 hover:border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-wand-magic-sparkles text-[9px] text-amber-400"></i>
+                        Suggérer
+                    </button>
+                    <button onclick="openScriptsModal()" id="scriptsBtn"
+                        class="px-2.5 py-1 rounded border border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-300 hover:bg-amber-500/20 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-scroll text-[9px]"></i>
+                        Scripts
+                    </button>
+                    <button onclick="openVaultModal()" id="chatVaultBtn"
+                        class="px-2.5 py-1 rounded border border-sky-500/30 bg-sky-500/10 text-[10px] text-sky-300 hover:bg-sky-500/20 transition flex items-center gap-1.5" title="Insérer un média du Cloud Vault">
+                        <i class="fa-solid fa-cloud text-[9px]"></i>
+                        Vault
+                    </button>
+                    <button onclick="openPaymentLinksModal()" id="paymentLinksBtn"
+                        class="px-2.5 py-1 rounded border border-[#1e2030] text-[10px] text-slate-400 hover:text-slate-200 hover:border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-link text-[9px] text-violet-400"></i>
+                        Lien vente
+                    </button>
+                    <button onclick="openRatesRulesModal()" id="ratesRulesBtn"
+                        class="px-2.5 py-1 rounded border border-emerald-500/30 bg-emerald-500/10 text-[10px] text-emerald-300 hover:bg-emerald-500/20 transition flex items-center gap-1.5" title="Tarifs officiels et règles de discussion">
+                        <i class="fa-solid fa-tags text-[9px]"></i>
+                        Tarifs & Règles
+                    </button>
+                    <label class="px-2.5 py-1 rounded border border-[#1e2030] text-[10px] text-slate-400 hover:text-slate-200 hover:border-slate-700 transition flex items-center gap-1.5 cursor-pointer" title="Envoyer une photo / vidéo">
+                        <i class="fa-solid fa-paperclip text-[10px] text-violet-400"></i>
+                        Média local
+                        <input type="file" id="mediaFileInput" accept="image/*,video/*" class="hidden" onchange="handleMediaSelect(event)">
+                    </label>
+                </div>
+                <span class="text-[10px] text-slate-700 hidden sm:inline">↵ Envoyer</span>
+            </div>
+
+            <!-- Emoji Quick Bar -->
+            <div class="flex items-center justify-between gap-1 px-2 py-1 bg-[#090a10] rounded-xl border border-[#181924]">
+                <div id="quickEmojiBar" class="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 py-0.5">
+                    <!-- Emojis générés dynamiquement -->
+                </div>
+                <button type="button" onclick="openEmojiSettingsModal()" class="w-6 h-6 rounded-lg text-slate-500 hover:text-violet-300 hover:bg-[#161826] flex items-center justify-center transition shrink-0 ml-1 cursor-pointer" title="Personnaliser les emojis">
+                    <i class="fa-solid fa-gear text-[11px]"></i>
+                </button>
+            </div>
+            <!-- Media preview container -->
+            <div id="mediaPreviewBox" class="hidden p-2 bg-[#0a0b0f] rounded-lg border border-[#1e2030] flex items-center justify-between">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <img id="mediaPreviewThumb" src="" class="w-10 h-10 object-cover rounded-md border border-[#242738]">
+                    <span id="mediaPreviewName" class="text-xs text-slate-300 truncate max-w-xs"></span>
+                </div>
+                <button type="button" onclick="cancelMediaSelection()" class="p-1 text-slate-500 hover:text-red-400 transition" title="Supprimer la photo">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+            <div class="relative flex items-end gap-2">
+                <!-- Slash Commands Popover -->
+                <div id="slashMenu" class="hidden absolute bottom-full mb-1.5 left-0 right-20 bg-[#0d0e14] border border-[#242738] rounded-xl shadow-2xl overflow-hidden z-30 max-h-60 flex flex-col">
+                    <div class="px-3 py-1.5 border-b border-[#1b1d28] flex items-center justify-between text-[10px] text-slate-400 shrink-0 bg-[#08090f]">
+                        <span class="font-medium flex items-center gap-1"><i class="fa-solid fa-bolt text-amber-400"></i> Commandes rapides (Scripts, Liens, Tarifs)</span>
+                        <span class="text-slate-600">↑↓ naviguer, Entrée insérer</span>
+                    </div>
+                    <div id="slashMenuList" class="p-1 space-y-0.5 overflow-y-auto max-h-48"></div>
+                </div>
+
+                <textarea id="messageInput" rows="2" placeholder="Écrire en tant que Miwa... (tapez / pour les commandes)"
+                    class="flex-1 px-3 py-2 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-slate-100 placeholder-slate-700 resize-none focus:outline-none focus:border-slate-600 transition"
+                    onkeydown="handleKeydown(event)" oninput="handleMessageInput()"></textarea>
+                <button onclick="sendMessage()" id="sendBtn"
+                    class="px-3.5 py-2 bg-white text-black text-xs font-medium rounded-lg hover:bg-slate-100 transition flex items-center gap-1.5 shrink-0 h-[52px]">
+                    <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                    <span>Envoyer</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+let authToken = localStorage.getItem("miwa_auth_token") || "";
+let fansData = [];
+let activeUserId = null;
+let activeFilter = "all";
+let refreshInterval = null;
+
+function formatTime(ts){
+    if(!ts) return "";
+    var d = new Date(typeof ts === "number" && ts < 1e11 ? ts * 1000 : ts);
+    if(isNaN(d.getTime())) return "";
+    var h = d.getHours().toString().padStart(2, '0');
+    var min = d.getMinutes().toString().padStart(2, '0');
+    return h + ":" + min;
+}
+
+function toggleOriginal(btn){
+    var next = btn.nextElementSibling;
+    if(!next) return;
+    var isHidden = next.classList.contains("hidden");
+    next.classList.toggle("hidden", !isHidden);
+    btn.innerHTML = isHidden 
+        ? '<i class="fa-solid fa-language text-[10px]"></i> Masquer original' 
+        : '<i class="fa-solid fa-language text-[10px]"></i> Voir original';
+}
+
+let paymentLinks = [];
+let selectedMediaBase64 = null;
+let selectedMediaName = '';
+let currentChatHistory = [];
+
+function togglePasswordVisibility(){
+    var inp = document.getElementById("authPassword");
+    var icon = document.getElementById("eyeIcon");
+    if(!inp) return;
+    if(inp.type === "password"){
+        inp.type = "text";
+        if(icon) { icon.classList.remove("fa-eye"); icon.classList.add("fa-eye-slash"); }
+    } else {
+        inp.type = "password";
+        if(icon) { icon.classList.remove("fa-eye-slash"); icon.classList.add("fa-eye"); }
+    }
+}
+
+function checkAuth(){
+    var modal = document.getElementById("authModal");
+    var tokenClean = (authToken || "").trim().toLowerCase().replace(/\s+/g, "");
+    if(tokenClean === "miwa2026"){
+        modal.style.display = "none";
+        refreshData();
+        startRefresh();
+        loadPaymentLinks();
+        loadScripts();
+        loadVault();
+    } else {
+        modal.style.display = "flex";
+        setTimeout(function(){
+            var inp = document.getElementById("authPassword");
+            if(inp) inp.focus();
+        }, 100);
+    }
+}
+
+async function handleAuth(e){
+    if(e && e.preventDefault) e.preventDefault();
+    var inp = document.getElementById("authPassword");
+    var raw = inp ? inp.value : "";
+    var p = raw.trim().toLowerCase().replace(/\s+/g, "");
+    var err = document.getElementById("authError");
+    if(!p){
+        if(err){ err.innerText = "Veuillez saisir le mot de passe"; err.classList.remove("hidden"); }
+        if(inp) inp.focus();
+        return;
+    }
+    if(p === "miwa2026"){
+        authToken = "miwa2026";
+        localStorage.setItem("miwa_auth_token", authToken);
+        document.getElementById("authModal").style.display = "none";
+        if(err) err.classList.add("hidden");
+        refreshData();
+        startRefresh();
+        loadPaymentLinks();
+        loadScripts();
+        loadVault();
+    } else {
+        if(err){ err.innerText = "Mot de passe incorrect"; err.classList.remove("hidden"); }
+        if(inp){ inp.value = ""; inp.focus(); }
+    }
+}
+
+function logout(){
+    localStorage.removeItem("miwa_auth_token");
+    location.reload();
+}
+
+let isRefreshing = false;
+let lastRenderedChatUid = null;
+let lastRenderedChatHash = "";
+
+function startRefresh(){
+    if(refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(refreshData, 1000);
+}
+
+let currentTags = [];
+
+function renderTagFilterButtons(tags){
+    var container = document.getElementById("dynamicTagFilterButtons");
+    if(!container) return;
+    container.innerHTML = (tags || []).map(function(t){
+        var isActive = activeFilter === t.id;
+        var activeCls = isActive ? "bg-white text-black font-semibold shadow-sm" : "text-slate-500 hover:text-slate-200";
+        return '<button onclick="setFilter(\'' + t.id + '\')" class="filter-btn px-2.5 py-1 rounded text-[10px] font-medium whitespace-nowrap transition-all ' + activeCls + '" data-filter="' + t.id + '">' +
+            t.label +
+        '</button>';
+    }).join("");
+}
+
+function setFilter(f){
+    activeFilter = f;
+    document.querySelectorAll(".filter-btn").forEach(function(b){
+        var isActive = b.dataset.filter === f;
+        if(isActive){
+            b.classList.add("bg-white","text-black");
+            b.classList.remove("text-slate-600", "text-slate-500", "text-violet-400");
+        } else {
+            b.classList.remove("bg-white","text-black");
+            if(b.dataset.filter === "unread"){
+                b.classList.add("text-violet-400");
+            } else {
+                b.classList.add("text-slate-500");
+            }
+        }
+    });
+    applyFilters();
+}
+
+async function refreshData(){
+    if(isRefreshing) return;
+    isRefreshing = true;
+    try{
+        var r = await fetch("/api/fans?token=" + encodeURIComponent(authToken));
+        if(r.status === 401){
+            localStorage.removeItem("miwa_auth_token");
+            authToken = "";
+            document.getElementById("authModal").style.display = "flex";
+            return;
+        }
+        if(!r.ok) throw new Error("HTTP " + r.status);
+        var d = await r.json();
+        fansData = d.fans || [];
+        currentTags = d.tags || [];
+        renderTagFilterButtons(currentTags);
+        updateKPIs(d.stats || {});
+        checkForNewMessages(fansData);
+        applyFilters();
+        if(!activeUserId){
+            var saved = sessionStorage.getItem("miwa_active_fan");
+            if(saved && fansData.some(function(f){ return f.user_id === saved; })){
+                activeUserId = saved;
+            }
+        }
+        if(activeUserId) loadChat(activeUserId, false);
+        var lu = document.getElementById("lastUpdated");
+        if(lu) lu.innerText = new Date().toLocaleTimeString();
+    }catch(e){
+        console.error("refreshData:", e);
+    }finally{
+        isRefreshing = false;
+    }
+}
+
+function updateKPIs(s){
+    if(document.getElementById("kpiTotalFans")) document.getElementById("kpiTotalFans").innerText = s.total_fans || 0;
+    if(document.getElementById("kpiUnread")) document.getElementById("kpiUnread").innerText = s.unread || 0;
+    if(document.getElementById("kpiSpender")) document.getElementById("kpiSpender").innerText = s.spender || 0;
+    if(document.getElementById("kpiFan")) document.getElementById("kpiFan").innerText = s.fan || 0;
+    if(document.getElementById("kpiTimewaster")) document.getElementById("kpiTimewaster").innerText = s.timewaster || 0;
+    var unreadBadge = document.getElementById("unreadFilterBadge");
+    if(unreadBadge){
+        var uCount = s.unread || 0;
+        unreadBadge.innerText = uCount;
+        unreadBadge.classList.toggle("hidden", uCount === 0);
+    }
+    var followupBadge = document.getElementById("followupFilterBadge");
+    if(followupBadge){
+        var fCount = s.followup || 0;
+        followupBadge.innerText = fCount;
+        followupBadge.classList.toggle("hidden", fCount === 0);
+    }
+    var revEl = document.getElementById("kpiTotalRevenue");
+    if(revEl) revEl.innerText = (s.total_revenue || 0).toFixed(0) + " €";
+}
+
+function applyFilters(){
+    var q = document.getElementById("searchInput").value.toLowerCase();
+    var f = fansData.filter(function(item){
+        var ms = item.name.toLowerCase().includes(q) ||
+                 item.user_id.includes(q) ||
+                 JSON.stringify(item.profile).toLowerCase().includes(q);
+        if(!ms) return false;
+        if(activeFilter === "unread") return item.is_unread;
+        if(activeFilter === "followup") return item.followup_date && item.followup_date.trim() !== "";
+        if(activeFilter === "all") return true;
+        return item.status_code === activeFilter;
+    });
+    // Trier : non lus en premier, puis par dernier message (plus récent d'abord)
+    f.sort(function(a, b){
+        if(a.is_unread && !b.is_unread) return -1;
+        if(!a.is_unread && b.is_unread) return 1;
+        var ta = a.last_message_time || 0;
+        var tb = b.last_message_time || 0;
+        return tb - ta;
+    });
+    renderList(f);
+}
+
+function renderList(fans){
+    var c = document.getElementById("fansList");
+    if(!fans.length){
+        c.innerHTML = '<div class="p-6 text-center text-slate-700 text-xs">Aucun fan dans cette vue.</div>';
+        return;
+    }
+    c.innerHTML = fans.map(function(f){
+        var sel = f.user_id === activeUserId;
+        var ini = f.name ? f.name.substring(0, 2).toUpperCase() : "??";
+        var isMan = f.is_manual ? ' <span class="opacity-30 text-[8px]">●</span>' : '';
+        var timeStr = formatTime(f.last_message_time);
+
+        var cardBg = sel
+            ? "bg-[#0c182b] border-2 border-sky-400/70 shadow-lg shadow-sky-950/40"
+            : (f.is_unread
+                ? "bg-[#10111f] border border-violet-500/20 shadow-md hover:bg-[#14162a] hover:border-violet-500/30"
+                : "bg-[#0c0d16] border border-[#181928]/70 hover:bg-[#111220] hover:border-[#242640]/80");
+
+        var avatarRing = sel
+            ? "ring-2 ring-sky-400 shadow-sm shadow-sky-400/40"
+            : (f.is_unread ? "ring-2 ring-violet-400/40" : "ring-1 ring-[#242738]/60");
+
+        var avatarGrad = sel
+            ? "from-sky-900/80 to-[#0e192c] text-sky-200"
+            : (f.is_unread ? "from-violet-900/70 to-[#1a1b2e] text-slate-300" : "from-[#181923] to-[#0e0f17] text-slate-300");
+
+        var unreadBubble = f.is_unread
+            ? '<span class="min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-violet-600 text-white flex items-center justify-center shadow-md shrink-0">!</span>'
+            : '';
+
+        var lastMsgPreview = f.last_message
+            ? f.last_message.replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            : '<span class="text-slate-600 italic">Aucun message</span>';
+        if(f.is_typing){
+            lastMsgPreview = '<span class="text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-ellipsis fa-fade text-[10px]"></i> écrit...</span>';
+        }
+
+        var statusPill = '<button type="button" onclick="event.stopPropagation(); openStatusModal(\'' + f.user_id + '\')" title="Cliquer pour changer l\'étiquette" class="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full border ' + f.badge_style + ' hover:brightness-125 transition-all cursor-pointer active:scale-95">' + f.status_label + isMan + '</button>';
+
+        var nameColor = sel ? 'text-sky-200 font-bold' : (f.is_unread ? 'text-white font-semibold' : 'text-slate-300');
+        var msgColor = sel ? 'text-sky-200/70' : (f.is_unread ? 'text-slate-200 font-medium' : 'text-slate-500');
+
+        return '<div onclick="selectFan(\'' + f.user_id + '\')" class="fan-card mx-2.5 mb-1.5 px-3 py-2.5 rounded-2xl cursor-pointer transition-all duration-150 ' + cardBg + '">' +
+            '<div class="flex items-center gap-3">' +
+                '<div class="relative shrink-0">' +
+                    '<div class="w-10 h-10 rounded-full ' + avatarRing + ' bg-gradient-to-br ' + avatarGrad + ' flex items-center justify-center font-bold text-sm transition-all">' +
+                        ini +
+                    '</div>' +
+                    (f.is_online ? '<span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0a0b10] shadow-sm"></span>' : '') +
+                '</div>' +
+                '<div class="flex-1 min-w-0">' +
+                    '<div class="flex items-center justify-between gap-1 mb-0.5">' +
+                        '<span class="text-[13px] truncate ' + nameColor + '">' + f.name + '</span>' +
+                        '<div class="flex items-center gap-1.5 shrink-0">' +
+                            (timeStr ? '<span class="text-[10px] text-slate-500 font-mono">' + timeStr + '</span>' : '') +
+                            unreadBubble +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="flex items-center justify-between gap-1">' +
+                        '<div class="text-[11px] truncate flex-1 ' + msgColor + '">' + lastMsgPreview + '</div>' +
+                        statusPill +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    }).join("");
+}
+
+function selectFan(uid){
+    activeUserId = uid;
+    sessionStorage.setItem("miwa_active_fan", uid);
+    // Marquer comme lu immédiatement si non lu (mise à jour UI instantanée)
+    var fan = fansData.find(function(f){ return f.user_id === uid; });
+    if(fan && fan.is_unread){
+        fan.is_unread = false;
+        // Appel API en arrière-plan sans bloquer l'UI
+        fetch("/api/mark-read", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: authToken, user_id: uid})
+        }).catch(function(e){ console.error("mark-read:", e); });
+    }
+    applyFilters();
+    lastRenderedChatUid = null;
+    loadChat(uid, true);
+}
+
+async function markAsRead(){
+    if(!activeUserId) return;
+    try {
+        var r = await fetch("/api/mark-read", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: authToken, user_id: activeUserId})
+        });
+        var d = await r.json();
+        if(d.ok){
+            var fan = fansData.find(function(f){ return f.user_id === activeUserId; });
+            if(fan) fan.is_unread = false;
+            applyFilters();
+            var mrBtn = document.getElementById("markReadBtn");
+            if(mrBtn) mrBtn.classList.add("hidden");
+        }
+    } catch(e) {
+        console.error("markAsRead:", e);
+    }
+}
+
+var shouldAutoScrollChat = false;
+
+function scrollChatToBottom(){
+    var msgs = document.getElementById("chatMessages");
+    if(!msgs) return;
+    msgs.scrollTop = msgs.scrollHeight;
+    requestAnimationFrame(function(){
+        if(msgs) msgs.scrollTop = msgs.scrollHeight;
+    });
+    setTimeout(function(){ if(msgs) msgs.scrollTop = msgs.scrollHeight; }, 60);
+    setTimeout(function(){ if(msgs) msgs.scrollTop = msgs.scrollHeight; }, 180);
+    setTimeout(function(){ if(msgs) msgs.scrollTop = msgs.scrollHeight; }, 350);
+    setTimeout(function(){ if(msgs) msgs.scrollTop = msgs.scrollHeight; }, 700);
+}
+
+function onChatMediaLoaded(){
+    var msgs = document.getElementById("chatMessages");
+    if(!msgs) return;
+    if(shouldAutoScrollChat || (msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 350)){
+        scrollChatToBottom();
+    }
+}
+
+async function loadChat(uid, scroll){
+    if(typeof scroll === "undefined") scroll = true;
+    var fan = fansData.find(function(f){ return f.user_id === uid; });
+    if(!fan) return;
+
+    document.getElementById("chatTitle").innerText = fan.name;
+    document.getElementById("chatAvatar").innerText = fan.name.substring(0, 2).toUpperCase();
+
+    var badge = document.getElementById("chatBadge");
+    badge.className = "px-2 py-0.5 rounded text-[10px] font-medium border ml-1 " + fan.badge_style;
+    badge.innerText = fan.status_label;
+    badge.classList.remove("hidden");
+
+    var onlineDot = document.getElementById("chatOnlineDot");
+    if(onlineDot) onlineDot.classList.toggle("hidden", !fan.is_online);
+
+    var pres = document.getElementById("chatPresenceText");
+    if(pres){
+        if(fan.is_typing){
+            pres.innerHTML = '<span class="text-emerald-400 animate-pulse font-medium flex items-center gap-1"><i class="fa-solid fa-pen text-[9px]"></i> est en train d\'écrire...</span>';
+        } else if(fan.is_online){
+            pres.innerHTML = '<span class="text-emerald-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>En ligne</span>';
+        } else {
+            pres.innerHTML = '<span class="text-slate-600">Hors ligne</span>';
+        }
+    }
+
+    document.getElementById("chatHeaderActions").classList.remove("hidden");
+    document.getElementById("sendMessageBox").classList.remove("hidden");
+    renderQuickEmojiBar();
+
+    var mrBtn = document.getElementById("markReadBtn");
+    if(mrBtn){
+        mrBtn.classList.toggle("hidden", !fan.is_unread);
+    }
+
+    // Badges total dépensé + relance dans l'en-tête du chat
+    var spentBadge = document.getElementById("chatTotalSpentBadge");
+    if(spentBadge){
+        var ts = fan.total_spent || 0;
+        if(ts > 0){
+            spentBadge.innerText = "💰 " + ts.toFixed(0) + " €";
+            spentBadge.classList.remove("hidden");
+        } else {
+            spentBadge.classList.add("hidden");
+        }
+    }
+    var followupBadgeEl = document.getElementById("chatFollowupBadge");
+    if(followupBadgeEl){
+        if(fan.followup_date){
+            followupBadgeEl.innerText = "⏰ Relance " + fan.followup_date;
+            followupBadgeEl.classList.remove("hidden");
+        } else {
+            followupBadgeEl.classList.add("hidden");
+        }
+    }
+
+
+    try{
+        var r = await fetch("/api/chat/" + encodeURIComponent(uid) + "?token=" + encodeURIComponent(authToken));
+        var d = await r.json();
+        currentChatHistory = d.history || [];
+
+        var chatHash = uid + "_" + currentChatHistory.length + "_" + (currentChatHistory.length ? (currentChatHistory[currentChatHistory.length-1].timestamp || 0) : 0);
+        var contentChanged = (lastRenderedChatHash !== chatHash);
+        var newChat = (lastRenderedChatUid !== uid);
+        if(lastRenderedChatUid === uid && !contentChanged && !scroll){
+            return;
+        }
+        lastRenderedChatUid = uid;
+        lastRenderedChatHash = chatHash;
+        var shouldScroll = scroll || newChat || contentChanged;
+        if(shouldScroll){
+            shouldAutoScrollChat = true;
+            setTimeout(function(){ shouldAutoScrollChat = false; }, 3000);
+        }
+
+        var msgs = document.getElementById("chatMessages");
+        if(!d.history || !d.history.length){
+            msgs.innerHTML = '<div class="h-full flex items-center justify-center text-slate-700 text-xs">Aucun message.</div>';
+            return;
+        }
+
+        msgs.innerHTML = d.history.map(function(m){
+            var isMiwa = m.role === "assistant";
+            var cnt = (m.content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            var timeStr = formatTime(m.timestamp);
+
+            var photoHtml = "";
+            if(m.photo_url){
+                var isVideo = m.photo_url.endsWith(".mp4") || m.photo_url.endsWith(".mov") || m.photo_url.endsWith(".webm");
+                if(isVideo){
+                    photoHtml = '<div class="my-2">' +
+                        '<video controls src="' + m.photo_url + '" onloadedmetadata="onChatMediaLoaded()" class="rounded-lg max-w-[280px] max-h-60 border border-[#242738] shadow-md"></video>' +
+                    '</div>';
+                } else {
+                    photoHtml = '<div class="my-2">' +
+                        '<a href="' + m.photo_url + '" target="_blank" class="inline-block group relative">' +
+                            '<img src="' + m.photo_url + '" onload="onChatMediaLoaded()" class="rounded-lg max-w-[280px] max-h-64 object-cover border border-[#242738] hover:opacity-95 transition shadow-md cursor-pointer" alt="Média">' +
+                            '<div class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] text-white flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">' +
+                                '<i class="fa-solid fa-magnifying-glass-plus"></i> Agrandir' +
+                            '</div>' +
+                        '</a>' +
+                    '</div>';
+                }
+            }
+
+            var subContent = "";
+            if(!isMiwa && m.original_content && m.original_content !== m.content){
+                var origEsc = m.original_content.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                subContent = '<div class="mt-1.5 pt-1.5 border-t border-[#1a1b23]">' +
+                    '<button onclick="toggleOriginal(this)" class="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-1 transition">' +
+                        '<i class="fa-solid fa-language text-[10px]"></i> Voir original' +
+                    '</button>' +
+                    '<div class="hidden text-[10px] text-slate-400 italic mt-1 whitespace-pre-wrap bg-[#08090d] p-1.5 rounded border border-[#16171f]">' +
+                        origEsc +
+                    '</div>' +
+                '</div>';
+            } else if(isMiwa && m.sent_content && m.sent_content !== m.content){
+                var sentEsc = m.sent_content.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                subContent = '<div class="mt-1.5 pt-1.5 border-t border-[#1e2030] text-[10px] text-slate-400 italic">' +
+                    '<span class="text-slate-500">Envoyé traduit :</span> ' + sentEsc +
+                '</div>';
+            }
+
+            var footer = "";
+            if(isMiwa){
+                var check = m.read
+                    ? '<span class="text-violet-400 font-bold ml-1" title="Lu">✓✓</span>'
+                    : '<span class="text-slate-500 font-bold ml-1" title="Envoyé">✓</span>';
+                footer = '<div class="flex items-center justify-end gap-1 text-[9px] text-slate-500 mt-1 font-mono">' +
+                    '<span>' + timeStr + '</span>' + check +
+                '</div>';
+            } else {
+                footer = timeStr ? '<div class="text-[9px] text-slate-600 text-right mt-1 font-mono">' + timeStr + '</div>' : '';
+            }
+
+            return '<div class="flex ' + (isMiwa ? 'justify-end' : 'justify-start') + '">' +
+                '<div class="max-w-[75%] rounded-xl px-3.5 py-2.5 text-xs leading-relaxed ' +
+                    (isMiwa
+                        ? 'bg-[#131420] border border-[#1e2030] text-slate-200 rounded-tr-none'
+                        : 'bg-[#0d0e14] border border-[#16171f] text-slate-400 rounded-tl-none') + '">' +
+                    '<div class="text-[10px] font-medium mb-1 ' + (isMiwa ? 'text-slate-600' : 'text-slate-700') + '">' +
+                        (isMiwa ? 'Miwa' : fan.name) +
+                    '</div>' +
+                    photoHtml +
+                    (cnt ? '<div class="whitespace-pre-wrap leading-relaxed">' + cnt + '</div>' : '') +
+                    subContent +
+                    footer +
+                '</div>' +
+            '</div>';
+        }).join("");
+
+        if(shouldScroll) scrollChatToBottom();
+    }catch(e){
+        console.error(e);
+    }
+}
+
+let editingStatusUserId = null;
+let selectedTagColor = "violet";
+
+const AVAILABLE_COLORS = [
+    { id: "sky", name: "Bleu ciel", bg: "bg-[#38bdf8]" },
+    { id: "emerald", name: "Émeraude", bg: "bg-[#34d399]" },
+    { id: "rose", name: "Rose/Rouge", bg: "bg-[#fb7185]" },
+    { id: "violet", name: "Violet", bg: "bg-[#a78bfa]" },
+    { id: "amber", name: "Or/Ambre", bg: "bg-[#fbbf24]" },
+    { id: "fuchsia", name: "Fuchsia", bg: "bg-[#e879f9]" },
+    { id: "cyan", name: "Cyan", bg: "bg-[#22d3ee]" },
+    { id: "orange", name: "Orange", bg: "bg-[#fb923c]" },
+    { id: "yellow", name: "Jaune", bg: "bg-[#facc15]" },
+    { id: "slate", name: "Gris", bg: "bg-[#94a3b8]" }
+];
+
+function openStatusModal(targetUid){
+    editingStatusUserId = targetUid || activeUserId;
+    var fan = fansData.find(function(f){ return f.user_id === editingStatusUserId; });
+    var nameEl = document.getElementById("statusModalFanName");
+    if(nameEl) nameEl.innerText = fan ? "Pour " + fan.name : "Pour ce fan";
+    renderTagsListModal(fan ? fan.status_code : "fan");
+    renderColorPalette();
+    var inp = document.getElementById("newTagNameInput");
+    if(inp) inp.value = "";
+    document.getElementById("statusModal").style.display = "flex";
+}
+
+function closeStatusModal(){
+    editingStatusUserId = null;
+    document.getElementById("statusModal").style.display = "none";
+}
+
+function renderColorPalette(){
+    var c = document.getElementById("colorPalette");
+    if(!c) return;
+    c.innerHTML = AVAILABLE_COLORS.map(function(col){
+        var isSel = selectedTagColor === col.id;
+        var ring = isSel ? "ring-2 ring-white scale-110" : "opacity-70 hover:opacity-100 hover:scale-105";
+        return '<button type="button" onclick="selectTagColor(\'' + col.id + '\')" class="w-6 h-6 rounded-full ' + col.bg + ' ' + ring + ' transition-all shadow-sm cursor-pointer" title="' + col.name + '"></button>';
+    }).join("");
+}
+
+function selectTagColor(c){
+    selectedTagColor = c;
+    renderColorPalette();
+}
+
+function renderTagsListModal(currentTagId){
+    var container = document.getElementById("tagsListContainer");
+    if(!container) return;
+    if(!currentTags.length){
+        container.innerHTML = '<div class="text-xs text-slate-500 italic p-2">Aucune étiquette</div>';
+        return;
+    }
+    var colorMap = {
+        sky: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+        rose: "border-rose-500/30 bg-rose-500/10 text-rose-300",
+        emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+        amber: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+        violet: "border-violet-500/30 bg-violet-500/10 text-violet-300",
+        fuchsia: "border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300",
+        cyan: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
+        yellow: "border-yellow-500/30 bg-yellow-500/10 text-yellow-300",
+        orange: "border-orange-500/30 bg-orange-500/10 text-orange-300",
+        slate: "border-slate-500/30 bg-slate-500/10 text-slate-300"
+    };
+
+    container.innerHTML = currentTags.map(function(t){
+        var isSelected = currentTagId === t.id;
+        var badgeCls = colorMap[t.color] || colorMap.sky;
+        var deleteBtn = (!t.is_default && t.id !== "fan" && t.id !== "timewaster" && t.id !== "spender")
+            ? '<button type="button" onclick="event.stopPropagation(); deleteCustomTag(\'' + t.id + '\')" class="text-slate-600 hover:text-rose-400 p-1 transition" title="Supprimer cette étiquette"><i class="fa-solid fa-trash-can text-[11px]"></i></button>'
+            : '';
+
+        var activeBorder = isSelected ? "border-violet-500/60 bg-[#141525]" : "border-[#1c1d2c] bg-[#0b0c14] hover:border-[#2a2c42]";
+
+        return '<div onclick="applyTag(\'' + t.id + '\')" class="flex items-center justify-between p-2 rounded-xl border ' + activeBorder + ' cursor-pointer transition">' +
+            '<div class="flex items-center gap-2">' +
+                '<span class="text-xs px-2.5 py-0.5 rounded-full border font-medium ' + badgeCls + '">' + t.label + '</span>' +
+                (isSelected ? '<span class="text-[10px] text-violet-400 font-semibold"><i class="fa-solid fa-check"></i> Actuel</span>' : '') +
+            '</div>' +
+            deleteBtn +
+        '</div>';
+    }).join("");
+}
+
+async function applyTag(tagId){
+    if(!editingStatusUserId) return;
+    try{
+        var r = await fetch("/api/status", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: authToken, user_id: editingStatusUserId, tag_id: tagId})
+        });
+        var d = await r.json();
+        if(d.ok){
+            closeStatusModal();
+            refreshData();
+        } else {
+            alert("Erreur: " + (d.error || "Inconnue"));
+        }
+    }catch(e){
+        alert("Erreur réseau");
+    }
+}
+
+async function createNewTagAndApply(){
+    var inp = document.getElementById("newTagNameInput");
+    var label = (inp ? inp.value : "").trim();
+    if(!label){
+        alert("Veuillez saisir un nom pour l'étiquette");
+        return;
+    }
+    try{
+        var r = await fetch("/api/tags/create", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: authToken, label: label, color: selectedTagColor})
+        });
+        var d = await r.json();
+        if(d.ok && d.tag){
+            currentTags = d.tags || [];
+            renderTagFilterButtons(currentTags);
+            await applyTag(d.tag.id);
+        } else {
+            alert("Erreur: " + (d.error || "Impossible de créer l'étiquette"));
+        }
+    }catch(e){
+        alert("Erreur réseau");
+    }
+}
+
+async function deleteCustomTag(tagId){
+    if(!confirm("Voulez-vous supprimer définitivement cette étiquette ?")) return;
+    try{
+        var r = await fetch("/api/tags/delete", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: authToken, id: tagId})
+        });
+        var d = await r.json();
+        if(d.ok){
+            currentTags = d.tags || [];
+            renderTagFilterButtons(currentTags);
+            var fan = fansData.find(function(f){ return f.user_id === editingStatusUserId; });
+            renderTagsListModal(fan ? fan.status_code : "fan");
+            refreshData();
+        } else {
+            alert("Erreur: " + (d.error || "Impossible de supprimer l'étiquette"));
+        }
+    }catch(e){
+        alert("Erreur réseau");
+    }
+}
+
+// --- GESTION DE LA BARRE D'EMOJIS RAPIDES ---
+const DEFAULT_QUICK_EMOJIS = ["😘", "❤️", "😉", "🔥", "✨", "🥰", "😋", "👀", "💋", "🌾", "🙈", "😇", "😍", "🤭", "👋", "🤤", "😈", "🤫"];
+
+const SUGGESTED_EMOJIS_LIST = [
+    "😘", "❤️", "😉", "🔥", "✨", "🥰", "😋", "👀", "💋", "🌾",
+    "🙈", "😇", "😍", "🤭", "👋", "🤤", "😈", "🤫", "💖", "👅",
+    "💦", "🥺", "🌸", "🍓", "🥂", "🍑", "🔞", "🫶", "💕", "🌹",
+    "☀️", "🌙", "😴", "😏", "😜", "🤩", "🤍", "🖤"
+];
+
+function getSavedEmojis(){
+    try{
+        var raw = localStorage.getItem("miwa_quick_emojis");
+        if(raw){
+            var parsed = JSON.parse(raw);
+            if(Array.isArray(parsed) && parsed.length) return parsed;
+        }
+    }catch(e){}
+    return DEFAULT_QUICK_EMOJIS;
+}
+
+function renderQuickEmojiBar(){
+    var bar = document.getElementById("quickEmojiBar");
+    if(!bar) return;
+    var emojis = getSavedEmojis();
+    bar.innerHTML = emojis.map(function(em){
+        return '<button type="button" onclick="insertEmoji(\'' + em + '\')" class="w-8 h-8 rounded-lg hover:bg-[#18192a] active:scale-90 text-[15px] flex items-center justify-center transition-all cursor-pointer shrink-0 select-none" title="Insérer ' + em + '">' +
+            em +
+        '</button>';
+    }).join("");
+}
+
+function insertEmoji(emoji){
+    var input = document.getElementById("messageInput");
+    if(!input) return;
+    var start = input.selectionStart;
+    var end = input.selectionEnd;
+    var text = input.value;
+    if(typeof start === "number" && typeof end === "number"){
+        input.value = text.substring(0, start) + emoji + text.substring(end);
+        input.selectionStart = input.selectionEnd = start + emoji.length;
+    } else {
+        input.value += emoji;
+    }
+    input.focus();
+}
+
+function openEmojiSettingsModal(){
+    var emojis = getSavedEmojis();
+    var inp = document.getElementById("customEmojiInput");
+    if(inp) inp.value = emojis.join(" ");
+
+    var picker = document.getElementById("suggestedEmojiPicker");
+    if(picker){
+        picker.innerHTML = SUGGESTED_EMOJIS_LIST.map(function(em){
+            return '<button type="button" onclick="appendEmojiToCustomInput(\'' + em + '\')" class="w-8 h-8 rounded-lg hover:bg-[#1a1b2a] text-lg flex items-center justify-center transition active:scale-95 cursor-pointer" title="' + em + '">' +
+                em +
+            '</button>';
+        }).join("");
+    }
+    document.getElementById("emojiSettingsModal").style.display = "flex";
+}
+
+function closeEmojiSettingsModal(){
+    document.getElementById("emojiSettingsModal").style.display = "none";
+}
+
+function appendEmojiToCustomInput(em){
+    var inp = document.getElementById("customEmojiInput");
+    if(!inp) return;
+    var cur = inp.value.trim();
+    inp.value = cur ? cur + " " + em : em;
+    inp.focus();
+}
+
+function saveCustomEmojis(){
+    var inp = document.getElementById("customEmojiInput");
+    var val = (inp ? inp.value : "").trim();
+    if(!val){
+        alert("Veuillez saisir au moins un emoji");
+        return;
+    }
+    var list = [];
+    if(typeof Intl !== "undefined" && Intl.Segmenter){
+        var segmenter = new Intl.Segmenter("fr", {granularity: "grapheme"});
+        for(var s of segmenter.segment(val)){
+            var seg = s.segment.trim();
+            if(seg && seg.length > 0 && !list.includes(seg)){
+                list.push(seg);
+            }
+        }
+    } else {
+        var parts = val.split(/\s+/);
+        parts.forEach(function(p){
+            if(p && !list.includes(p)) list.push(p);
+        });
+    }
+
+    if(!list.length) list = DEFAULT_QUICK_EMOJIS;
+    localStorage.setItem("miwa_quick_emojis", JSON.stringify(list));
+    renderQuickEmojiBar();
+    closeEmojiSettingsModal();
+}
+
+function resetDefaultEmojis(){
+    localStorage.removeItem("miwa_quick_emojis");
+    var inp = document.getElementById("customEmojiInput");
+    if(inp) inp.value = DEFAULT_QUICK_EMOJIS.join(" ");
+    renderQuickEmojiBar();
+}
+
+function openProfileModal(){
+    var fan = fansData.find(function(f){ return f.user_id === activeUserId; });
+    if(!fan) return;
+    var p = fan.profile || {};
+    document.getElementById("profPrenom").value = p.prenom || "";
+    document.getElementById("profAge").value = p.age || "";
+    document.getElementById("profVille").value = p.ville || "";
+    document.getElementById("profMetier").value = p.metier || "";
+    document.getElementById("profFetiches").value = p.fetiches || "";
+    document.getElementById("profLimites").value = p.limites || "";
+    document.getElementById("profNotes").value = p.notes || p.passion || "";
+    document.getElementById("profTotalSpent").value = fan.total_spent || p.total_spent || "";
+    document.getElementById("profFollowupDate").value = fan.followup_date || p.followup_date || "";
+    document.getElementById("profFollowupNote").value = fan.followup_note || p.followup_note || "";
+    document.getElementById("profileModal").style.display = "flex";
+}
+function closeProfileModal(){ document.getElementById("profileModal").style.display = "none"; }
+function clearFollowup(){
+    document.getElementById("profFollowupDate").value = "";
+    document.getElementById("profFollowupNote").value = "";
+}
+async function saveProfile(){
+    if(!activeUserId) return;
+    var prof = {
+        prenom: document.getElementById("profPrenom").value.trim(),
+        age: document.getElementById("profAge").value.trim(),
+        ville: document.getElementById("profVille").value.trim(),
+        metier: document.getElementById("profMetier").value.trim(),
+        fetiches: document.getElementById("profFetiches").value.trim(),
+        limites: document.getElementById("profLimites").value.trim(),
+        notes: document.getElementById("profNotes").value.trim()
+    };
+    var total_spent = parseFloat(document.getElementById("profTotalSpent").value) || 0;
+    var followup_date = document.getElementById("profFollowupDate").value.trim();
+    var followup_note = document.getElementById("profFollowupNote").value.trim();
+    try{
+        var r = await fetch("/api/profile", {method:"POST", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({token: authToken, user_id: activeUserId, profile: prof,
+                total_spent: total_spent, followup_date: followup_date, followup_note: followup_note})});
+        var d = await r.json();
+        if(d.ok){ closeProfileModal(); refreshData(); }
+        else alert("Erreur: " + (d.error || "Inconnue"));
+    }catch(e){ alert("Erreur réseau"); }
+}
+
+// LIENS DE PAIEMENT
+async function loadPaymentLinks(){
+    try{
+        var r = await fetch("/api/payment-links?token=" + encodeURIComponent(authToken));
+        if(r.ok){
+            var d = await r.json();
+            paymentLinks = d.links || [];
+        }
+    }catch(e){
+        console.error("Erreur chargement liens:", e);
+    }
+}
+
+function openPaymentLinksModal(){
+    renderPaymentLinksList();
+    document.getElementById("paymentLinksModal").style.display = "flex";
+}
+
+function closePaymentLinksModal(){
+    document.getElementById("paymentLinksModal").style.display = "none";
+}
+
+function renderPaymentLinksList(){
+    var c = document.getElementById("paymentLinksList");
+    if(!paymentLinks || !paymentLinks.length){
+        c.innerHTML = '<div class="text-center text-slate-600 text-xs py-4">Aucun lien enregistré pour l\'instant.</div>';
+        return;
+    }
+    c.innerHTML = paymentLinks.map(function(l, idx){
+        var alreadySent = false;
+        if(currentChatHistory && currentChatHistory.length && l.url){
+            var target = l.url.trim().toLowerCase();
+            alreadySent = currentChatHistory.some(function(m){
+                return m.role === "assistant" && (m.content || "").toLowerCase().indexOf(target) !== -1;
+            });
+        }
+
+        var badgeHtml = alreadySent
+            ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/30 shrink-0 font-medium">✓ Déjà envoyé</span>'
+            : '';
+
+        var sendBtnHtml = alreadySent
+            ? '<button onclick="sendDirectPaymentLink(' + idx + ')" class="px-2 py-1 rounded border border-[#242738] hover:border-slate-500 text-slate-400 hover:text-white text-[10px] transition flex items-center gap-1" title="Renvoyer ce lien">' +
+                '<i class="fa-solid fa-arrows-rotate text-[9px]"></i> Renvoyer' +
+              '</button>'
+            : '<button onclick="sendDirectPaymentLink(' + idx + ')" class="px-2 py-1 rounded bg-violet-600 hover:bg-violet-500 text-white font-medium text-[10px] transition flex items-center gap-1" title="Envoyer directement au fan">' +
+                '<i class="fa-solid fa-paper-plane text-[9px]"></i> Envoyer direct' +
+              '</button>';
+
+        var titleStr = (l.title || "Lien de paiement").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        var titleAttr = (l.title || "Lien de paiement").replace(/"/g, "&quot;");
+        var urlStr = (l.url || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        var urlAttr = (l.url || "").replace(/"/g, "&quot;");
+
+        return '<div class="p-3 rounded-xl bg-[#0a0b0f] border border-[#1e2030] flex items-center justify-between gap-3">' +
+            '<div class="min-w-0 flex-1">' +
+                '<div class="flex flex-wrap items-center gap-1.5 mb-1">' +
+                    '<span class="text-xs font-medium text-white break-words" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;" title="' + titleAttr + '">' + titleStr + '</span>' +
+                    badgeHtml +
+                '</div>' +
+                '<div class="text-[10px] text-slate-500 truncate font-mono" title="' + urlAttr + '">' + urlStr + '</div>' +
+            '</div>' +
+            '<div class="flex items-center gap-1.5 shrink-0">' +
+                '<button onclick="insertPaymentLink(' + idx + ')" class="px-2.5 py-1.5 rounded-lg bg-[#161722] hover:bg-[#202232] border border-[#242738] text-[10px] text-slate-300 hover:text-white transition" title="Mettre dans le champ message">' +
+                    'Insérer' +
+                '</button>' +
+                sendBtnHtml +
+                '<button onclick="deletePaymentLink(' + idx + ')" class="p-1.5 text-slate-600 hover:text-red-400 transition" title="Supprimer">' +
+                    '<i class="fa-solid fa-trash-can text-[10px]"></i>' +
+                '</button>' +
+            '</div>' +
+        '</div>';
+    }).join("");
+}
+
+function insertPaymentLink(idx){
+    var l = paymentLinks[idx];
+    if(!l) return;
+    var inp = document.getElementById("messageInput");
+    if(inp.value.trim()){
+        inp.value += "\n" + l.url;
+    } else {
+        inp.value = l.url;
+    }
+    closePaymentLinksModal();
+    inp.focus();
+}
+
+async function sendDirectPaymentLink(idx){
+    var l = paymentLinks[idx];
+    if(!l || !activeUserId) return;
+    closePaymentLinksModal();
+    var inp = document.getElementById("messageInput");
+    inp.value = l.url;
+    await sendMessage();
+}
+
+async function saveNewPaymentLink(){
+    var title = document.getElementById("newLinkTitle").value.trim();
+    var url = document.getElementById("newLinkUrl").value.trim();
+    if(!url){
+        alert("Veuillez entrer une URL valide");
+        return;
+    }
+    if(!title) title = "Lien de vente";
+    paymentLinks.push({title: title, url: url, created_at: Date.now()});
+    document.getElementById("newLinkTitle").value = "";
+    document.getElementById("newLinkUrl").value = "";
+    renderPaymentLinksList();
+
+    try{
+        await fetch("/api/payment-links", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: authToken, links: paymentLinks})
+        });
+    }catch(e){
+        console.error("Erreur sauvegarde lien:", e);
+    }
+}
+
+async function deletePaymentLink(idx){
+    if(!confirm("Supprimer ce lien ?")) return;
+    paymentLinks.splice(idx, 1);
+    renderPaymentLinksList();
+    try{
+        await fetch("/api/payment-links", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: authToken, links: paymentLinks})
+        });
+    }catch(e){
+        console.error("Erreur suppression lien:", e);
+    }
+}
+
+function handleKeydown(e){
+    if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+}
+
+
+function handleMediaSelect(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    selectedMediaName = file.name;
+    var reader = new FileReader();
+    reader.onload = function(evt){
+        selectedMediaBase64 = evt.target.result;
+        var thumb = document.getElementById("mediaPreviewThumb");
+        var isVideo = file.type.startsWith("video/");
+        if(isVideo){
+            thumb.classList.add("hidden");
+        } else {
+            thumb.classList.remove("hidden");
+            thumb.src = selectedMediaBase64;
+        }
+        var sizeKb = Math.round(file.size / 1024);
+        var sizeStr = sizeKb > 1024 ? (sizeKb / 1024).toFixed(1) + " MB" : sizeKb + " KB";
+        document.getElementById("mediaPreviewName").innerText = file.name + " (" + sizeStr + ")";
+        document.getElementById("mediaPreviewBox").classList.remove("hidden");
+    };
+    reader.readAsDataURL(file);
+}
+
+function cancelMediaSelection(){
+    selectedMediaBase64 = null;
+    selectedMediaName = "";
+    var inp = document.getElementById("mediaFileInput");
+    if(inp) inp.value = "";
+    document.getElementById("mediaPreviewBox").classList.add("hidden");
+}
+
+async function sendMessage(){
+    if(!activeUserId) return;
+    var inp = document.getElementById("messageInput");
+    var txt = inp.value.trim();
+    if(!txt && !selectedMediaBase64) return;
+    var btn = document.getElementById("sendBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[10px]"></i>';
+    inp.value = "";
+
+    try{
+        var r, d;
+        if(selectedMediaBase64){
+            var b64ToSend = selectedMediaBase64;
+            var fnameToSend = selectedMediaName;
+            cancelMediaSelection();
+            r = await fetch("/api/send-media", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    token: authToken,
+                    user_id: activeUserId,
+                    image_b64: b64ToSend,
+                    filename: fnameToSend,
+                    message: txt
+                })
+            });
+        } else {
+            r = await fetch("/api/send", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({token: authToken, user_id: activeUserId, message: txt})
+            });
+        }
+        d = await r.json();
+        if(d.ok){
+            var fan = fansData.find(function(f){ return f.user_id === activeUserId; });
+            if(fan) fan.is_unread = false;
+            shiftMsgSent++;
+            updateShiftTracker();
+            await loadChat(activeUserId, true);
+            refreshData();
+        } else {
+            inp.value = txt;
+            alert("Erreur: " + (d.error || "Inconnue"));
+        }
+    }catch(e){
+        inp.value = txt;
+        alert("Erreur réseau: " + e.message);
+    }finally{
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane text-[10px]"></i> <span>Envoyer</span>';
+        inp.focus();
+    }
+}
+
+async function suggestReply(){
+    if(!activeUserId) return;
+    var btn = document.getElementById("suggestBtn");
+    var inp = document.getElementById("messageInput");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[9px]"></i> En cours...';
+    try{
+        var r = await fetch("/api/suggest", {method:"POST", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({token: authToken, user_id: activeUserId})});
+        var d = await r.json();
+        if(d.ok && d.suggestion){ inp.value = d.suggestion; inp.focus(); }
+        else alert("Erreur: " + (d.error || "Inconnue"));
+    }catch(e){
+        alert("Erreur réseau");
+    }finally{
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-[9px]"></i> Suggérer';
+    }
+}
+
+// ==================== SCRIPTS ====================
+let scriptsData = [];
+let activeScriptCategory = "all";
+
+async function loadScripts(){
+    try{
+        var r = await fetch("/api/scripts?token=" + encodeURIComponent(authToken));
+        if(r.ok){
+            var d = await r.json();
+            scriptsData = d.scripts || [];
+        }
+    }catch(e){
+        console.error("Erreur chargement scripts:", e);
+    }
+}
+
+function openScriptsModal(){
+    loadScripts().then(function(){
+        renderScriptsList();
+        document.getElementById("scriptsModal").style.display = "flex";
+    });
+}
+
+function closeScriptsModal(){
+    document.getElementById("scriptsModal").style.display = "none";
+}
+
+function setScriptCategoryFilter(cat){
+    activeScriptCategory = cat;
+    document.querySelectorAll(".script-filter-btn").forEach(function(b){
+        var isAct = b.dataset.cat === cat;
+        if(isAct){
+            b.classList.add("bg-white", "text-black");
+            b.classList.remove("text-slate-400");
+        } else {
+            b.classList.remove("bg-white", "text-black");
+            b.classList.add("text-slate-400");
+        }
+    });
+    renderScriptsList();
+}
+
+function formatScriptText(rawText){
+    if(!rawText) return "";
+    var fan = activeUserId ? fansData.find(function(f){ return f.user_id === activeUserId; }) : null;
+    var prenom = "toi";
+    if(fan){
+        if(fan.profile && fan.profile.prenom) prenom = fan.profile.prenom;
+        else if(fan.name) prenom = fan.name.split(" ")[0];
+    }
+    var firstLink = paymentLinks && paymentLinks.length ? paymentLinks[0].url : "";
+    return rawText
+        .replace(/\{prenom\}/gi, prenom)
+        .replace(/\{lien\}/gi, firstLink);
+}
+
+function renderScriptsList(){
+    var c = document.getElementById("scriptsList");
+    var filtered = scriptsData.filter(function(s){
+        if(activeScriptCategory === "all") return true;
+        return s.category === activeScriptCategory;
+    });
+
+    if(!filtered.length){
+        c.innerHTML = '<div class="text-center text-slate-600 text-xs py-6">Aucun script dans cette catégorie.</div>';
+        return;
+    }
+
+    c.innerHTML = filtered.map(function(s){
+        var realIdx = scriptsData.indexOf(s);
+        var formatted = formatScriptText(s.content);
+        var escFormatted = formatted.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        
+        return '<div class="p-3 rounded-xl bg-[#0a0b0f] border border-[#1e2030] space-y-2 hover:border-slate-700 transition">' +
+            '<div class="flex items-center justify-between gap-2">' +
+                '<div class="flex items-center gap-2 min-w-0">' +
+                    '<span class="text-xs font-semibold text-white truncate">' + (s.title || "Script") + '</span>' +
+                    '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 shrink-0 font-medium">' + (s.category || "Général") + '</span>' +
+                '</div>' +
+                '<div class="flex items-center gap-1.5 shrink-0">' +
+                    '<button onclick="insertScript(' + realIdx + ')" class="px-2 py-1 rounded bg-[#161722] hover:bg-[#202232] border border-[#242738] text-[10px] text-slate-300 hover:text-white transition flex items-center gap-1" title="Insérer dans le champ">' +
+                        '<i class="fa-solid fa-pen-to-square text-[9px]"></i> Insérer' +
+                    '</button>' +
+                    '<button onclick="sendDirectScript(' + realIdx + ')" class="px-2 py-1 rounded bg-amber-600 hover:bg-amber-500 text-black font-semibold text-[10px] transition flex items-center gap-1" title="Envoyer directement">' +
+                        '<i class="fa-solid fa-paper-plane text-[9px]"></i> Envoyer direct' +
+                    '</button>' +
+                    '<button onclick="deleteScript(' + realIdx + ')" class="p-1 text-slate-600 hover:text-red-400 transition" title="Supprimer">' +
+                        '<i class="fa-solid fa-trash-can text-[10px]"></i>' +
+                    '</button>' +
+                '</div>' +
+            '</div>' +
+            '<div class="text-xs text-slate-400 whitespace-pre-wrap leading-relaxed bg-[#0f1018] p-2.5 rounded-lg border border-[#161722] font-mono text-[11px]">' +
+                escFormatted +
+            '</div>' +
+        '</div>';
+    }).join("");
+}
+
+function insertScript(idx){
+    var s = scriptsData[idx];
+    if(!s) return;
+    var txt = formatScriptText(s.content);
+    var inp = document.getElementById("messageInput");
+    if(inp.value.trim()){
+        inp.value += "\n" + txt;
+    } else {
+        inp.value = txt;
+    }
+    closeScriptsModal();
+    inp.focus();
+}
+
+async function sendDirectScript(idx){
+    var s = scriptsData[idx];
+    if(!s || !activeUserId) {
+        if(!activeUserId) alert("Veuillez sélectionner un fan d'abord");
+        return;
+    }
+    closeScriptsModal();
+    var inp = document.getElementById("messageInput");
+    inp.value = formatScriptText(s.content);
+    await sendMessage();
+}
+
+async function saveNewScript(){
+    var title = document.getElementById("newScriptTitle").value.trim();
+    var category = document.getElementById("newScriptCategory").value.trim();
+    var content = document.getElementById("newScriptContent").value.trim();
+    if(!title || !content){
+        alert("Titre et contenu obligatoires");
+        return;
+    }
+    var newS = {
+        id: "script_" + Date.now(),
+        title: title,
+        category: category,
+        content: content
+    };
+    scriptsData.push(newS);
+    document.getElementById("newScriptTitle").value = "";
+    document.getElementById("newScriptContent").value = "";
+    renderScriptsList();
+
+    try{
+        await fetch("/api/scripts", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: authToken, scripts: scriptsData})
+        });
+    }catch(e){
+        console.error("Erreur sauvegarde script:", e);
+    }
+}
+
+async function deleteScript(idx){
+    if(!confirm("Supprimer ce script ?")) return;
+    scriptsData.splice(idx, 1);
+    renderScriptsList();
+    try{
+        await fetch("/api/scripts", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: authToken, scripts: scriptsData})
+        });
+    }catch(e){
+        console.error("Erreur suppression script:", e);
+    }
+}
+
+// ==================== CLOUD VAULT ====================
+let vaultData = [];
+let activeVaultCategory = "all";
+
+async function loadVault(){
+    try{
+        var r = await fetch("/api/vault?token=" + encodeURIComponent(authToken));
+        if(r.ok){
+            var d = await r.json();
+            vaultData = d.items || [];
+            var cnt = document.getElementById("vaultItemsCount");
+            if(cnt) cnt.innerText = vaultData.length + " média(s)";
+        }
+    }catch(e){
+        console.error("Erreur chargement vault:", e);
+    }
+}
+
+function openVaultModal(){
+    loadVault().then(function(){
+        renderVaultGallery();
+        document.getElementById("vaultModal").style.display = "flex";
+    });
+}
+
+function closeVaultModal(){
+    document.getElementById("vaultModal").style.display = "none";
+}
+
+function toggleVaultUploadBox(){
+    var box = document.getElementById("vaultUploadBox");
+    box.classList.toggle("hidden");
+}
+
+function setVaultCategoryFilter(cat){
+    activeVaultCategory = cat;
+    document.querySelectorAll(".vault-filter-btn").forEach(function(b){
+        var isAct = b.dataset.cat === cat;
+        if(isAct){
+            b.classList.add("bg-white", "text-black");
+            b.classList.remove("text-slate-400");
+        } else {
+            b.classList.remove("bg-white", "text-black");
+            b.classList.add("text-slate-400");
+        }
+    });
+    renderVaultGallery();
+}
+
+function renderVaultGallery(){
+    var g = document.getElementById("vaultGallery");
+    var activeFan = fansData.find(function(f){ return f.user_id === activeUserId; });
+    var sentIds = (activeFan && activeFan.sent_vault_ids) ? activeFan.sent_vault_ids : [];
+
+    var filtered = vaultData.filter(function(item){
+        if(activeVaultCategory === "all") return true;
+        if(activeVaultCategory === "unseen") return !sentIds.includes(item.id);
+        if(activeVaultCategory === "image") return item.media_type === "image";
+        if(activeVaultCategory === "video") return item.media_type === "video";
+        return item.category === activeVaultCategory;
+    });
+
+    if(!filtered.length){
+        g.innerHTML = '<div class="col-span-full text-center text-slate-600 text-xs py-10">Aucun média dans cette catégorie du Vault. Cliquez sur "Importer" pour en ajouter.</div>';
+        return;
+    }
+
+    g.innerHTML = filtered.map(function(item){
+        var alreadySent = sentIds.includes(item.id);
+        var isVideo = item.media_type === "video";
+        var thumbHtml = isVideo
+            ? '<div class="w-full h-32 bg-[#12141f] rounded-lg flex flex-col items-center justify-center relative overflow-hidden border border-[#1e2030]">' +
+                '<video src="' + item.url + '" class="w-full h-full object-cover opacity-60"></video>' +
+                '<div class="absolute inset-0 flex items-center justify-center bg-black/30">' +
+                    '<div class="w-8 h-8 rounded-full bg-sky-600/90 text-white flex items-center justify-center shadow-lg"><i class="fa-solid fa-play text-xs ml-0.5"></i></div>' +
+                '</div>' +
+              '</div>'
+            : '<img src="' + item.url + '" class="w-full h-32 object-cover rounded-lg border border-[#1e2030] hover:opacity-90 transition">';
+
+        var sendBtnHtml = activeUserId
+            ? (alreadySent
+                ? '<button onclick="sendVaultItemToChat(\'' + item.id + '\')" class="w-full py-1.5 rounded bg-orange-700 hover:bg-orange-600 text-white font-medium text-[11px] transition flex items-center justify-center gap-1 shadow-sm"><i class="fa-solid fa-rotate-right text-[9px]"></i> Renvoyer quand même</button>'
+                : '<button onclick="sendVaultItemToChat(\'' + item.id + '\')" class="w-full py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white font-medium text-[11px] transition flex items-center justify-center gap-1 shadow-sm"><i class="fa-solid fa-paper-plane text-[9px]"></i> Envoyer au fan</button>')
+            : '<span class="text-[10px] text-slate-600 italic text-center block">Sélectionnez un fan pour envoyer</span>';
+
+        var alreadySentBadge = alreadySent
+            ? '<div class="absolute top-1.5 left-1.5 text-[9px] bg-orange-600/90 text-white px-1.5 py-0.5 rounded font-bold">⚠️ Déjà envoyé</div>'
+            : '';
+
+        return '<div class="p-2.5 rounded-xl bg-[#0a0b0f] border border-[#1e2030] flex flex-col justify-between space-y-2 hover:border-slate-700 transition">' +
+            '<div class="space-y-1.5">' +
+                '<div class="relative group">' +
+                    '<a href="' + item.url + '" target="_blank" class="block cursor-pointer">' +
+                        thumbHtml +
+                    '</a>' +
+                    alreadySentBadge +
+                    '<button onclick="deleteVaultItem(\'' + item.id + '\')" class="absolute top-1.5 right-1.5 w-6 h-6 rounded-md bg-black/70 hover:bg-red-600 text-white text-[10px] flex items-center justify-center transition" title="Supprimer">' +
+                        '<i class="fa-solid fa-trash-can"></i>' +
+                    '</button>' +
+                '</div>' +
+                '<div class="min-w-0">' +
+                    '<div class="text-xs font-semibold text-white truncate" title="' + (item.title || "") + '">' + (item.title || "Média") + '</div>' +
+                    '<div class="flex items-center justify-between text-[10px] text-slate-500 mt-0.5">' +
+                        '<span>' + (item.category || "Général") + '</span>' +
+                        '<span>' + (item.size ? Math.round(item.size / 1024) + " KB" : "") + '</span>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="pt-1 border-t border-[#161722]">' +
+                sendBtnHtml +
+            '</div>' +
+        '</div>';
+    }).join("");
+}
+
+async function uploadToVault(){
+    var fileInput = document.getElementById("vaultFileInput");
+    var files = fileInput.files;
+    if(!files || !files.length){
+        alert("Veuillez choisir au moins une photo ou une vidéo");
+        return;
+    }
+    var baseTitle = document.getElementById("vaultItemTitle").value.trim();
+    var category = document.getElementById("vaultItemCategory").value.trim() || "Général";
+    var btn = document.getElementById("vaultUploadBtn");
+    btn.disabled = true;
+
+    var total = files.length;
+    var successCount = 0;
+    var failCount = 0;
+
+    for(var i = 0; i < total; i++){
+        var file = files[i];
+        var itemTitle = baseTitle ? (total > 1 ? baseTitle + " (" + (i+1) + ")" : baseTitle) : file.name;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> ' + (i+1) + '/' + total + '...';
+
+        try{
+            var b64 = await new Promise(function(resolve, reject){
+                var r = new FileReader();
+                r.onload = function(e){ resolve(e.target.result); };
+                r.onerror = reject;
+                r.readAsDataURL(file);
+            });
+
+            var r = await fetch("/api/vault/upload", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    token: authToken,
+                    title: itemTitle,
+                    category: category,
+                    file_b64: b64,
+                    filename: file.name
+                })
+            });
+            var d = await r.json();
+            if(d.ok){
+                successCount++;
+            } else {
+                failCount++;
+                console.error("Erreur upload " + file.name + ":", d.error);
+            }
+        }catch(e){
+            failCount++;
+            console.error("Exception upload " + file.name + ":", e);
+        }
+    }
+
+    document.getElementById("vaultItemTitle").value = "";
+    document.getElementById("vaultItemCategory").value = "";
+    fileInput.value = "";
+    toggleVaultUploadBox();
+    await loadVault();
+    renderVaultGallery();
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-upload text-[10px]"></i> Sauvegarder dans le Cloud';
+
+    if(failCount > 0){
+        alert(successCount + " média(s) téléversé(s) avec succès, " + failCount + " échec(s).");
+    }
+}
+
+async function deleteVaultItem(id){
+    if(!confirm("Supprimer définitivement ce média du Vault ?")) return;
+    try{
+        var r = await fetch("/api/vault/delete", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: authToken, id: id})
+        });
+        var d = await r.json();
+        if(d.ok){
+            await loadVault();
+            renderVaultGallery();
+        } else {
+            alert("Erreur: " + (d.error || "Inconnue"));
+        }
+    }catch(e){
+        alert("Erreur réseau");
+    }
+}
+
+async function sendVaultItemToChat(id){
+    if(!activeUserId) return;
+    var item = vaultData.find(function(it){ return it.id === id; });
+    if(!item) return;
+
+    var caption = prompt("Message d'accompagnement (facultatif) :", "");
+    if(caption === null) return;
+
+    closeVaultModal();
+
+    try{
+        var r = await fetch("/api/vault/send", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                token: authToken,
+                user_id: activeUserId,
+                id: id,
+                message: caption.trim()
+            })
+        });
+        var d = await r.json();
+        if(d.ok){
+            var fan = fansData.find(function(f){ return f.user_id === activeUserId; });
+            if(fan){
+                fan.is_unread = false;
+                if(!fan.sent_vault_ids) fan.sent_vault_ids = [];
+                if(!fan.sent_vault_ids.includes(id)) fan.sent_vault_ids.push(id);
+            }
+            shiftLinkSent++;
+            updateShiftTracker();
+            await loadChat(activeUserId, true);
+            refreshData();
+        } else {
+            alert("Erreur: " + (d.error || "Inconnue"));
+        }
+    }catch(e){
+        alert("Erreur réseau envoi vault");
+    }
+}
+
+
+
+// ========================
+// SHIFT TRACKER
+// ========================
+var shiftStartTime = Date.now();
+var shiftMsgSent = 0;
+var shiftLinkSent = 0;
+
+function updateShiftTracker(){
+    var elapsed = Math.floor((Date.now() - shiftStartTime) / 1000);
+    var h = Math.floor(elapsed / 3600);
+    var m = Math.floor((elapsed % 3600) / 60);
+    var s = elapsed % 60;
+    var fmt = (h > 0 ? h + "h " : "") + (m < 10 ? "0" : "") + m + "m " + (s < 10 ? "0" : "") + s + "s";
+    var el = document.getElementById("shiftTimer");
+    if(el) el.innerText = fmt;
+    var mc = document.getElementById("shiftMsgCount");
+    if(mc) mc.innerText = shiftMsgSent;
+    var lc = document.getElementById("shiftLinkCount");
+    if(lc) lc.innerText = shiftLinkSent;
+    var bar = document.getElementById("shiftTrackerBar");
+    if(bar) bar.classList.remove("hidden");
+}
+
+setInterval(updateShiftTracker, 1000);
+
+// ========================
+// SLASH COMMANDS
+// ========================
+var slashMenuIndex = -1;
+var slashMenuItems = [];
+
+function handleMessageInput(){
+    var inp = document.getElementById("messageInput");
+    var val = inp.value;
+    var menu = document.getElementById("slashMenu");
+    var list = document.getElementById("slashMenuList");
+    if(!menu || !list) return;
+
+    // Detect if the text starts with '/' and no space yet
+    var slashMatch = val.match(/^\/(\S*)$/);
+    if(slashMatch){
+        var query = slashMatch[1].toLowerCase();
+        // Build items: scripts (from page) + payment links + rates summary
+        var items = [];
+        // Add scripts if available
+        if(typeof scriptList !== "undefined"){
+            scriptList.forEach(function(sc){
+                if(sc.title.toLowerCase().includes(query) || query === ""){
+                    items.push({label: "📝 " + sc.title, action: function(content){ document.getElementById("messageInput").value = content; }, content: sc.content});
+                }
+            });
+        }
+        // Add payment links
+        if(typeof paymentLinks !== "undefined"){
+            paymentLinks.forEach(function(l){
+                if(l.title.toLowerCase().includes(query) || l.url.includes(query) || query === ""){
+                    items.push({label: "💳 " + l.title + " — " + l.url, action: null, content: l.url});
+                }
+            });
+        }
+        // Add rates shortcut
+        if(query === "" || "tarifs".includes(query)){
+            items.push({label: "💰 Insérer résumé tarifs", action: null, content: "__rates__"});
+        }
+
+        if(items.length > 0){
+            slashMenuItems = items;
+            slashMenuIndex = -1;
+            list.innerHTML = items.map(function(it, i){
+                return '<div class="slash-item px-3 py-2 text-xs text-slate-200 cursor-pointer hover:bg-[#1e2030] truncate" data-idx="' + i + '" onmousedown="event.preventDefault(); selectSlashItem(' + i + ')">' + it.label + '</div>';
+            }).join("");
+            menu.classList.remove("hidden");
+            return;
+        }
+    }
+    menu.classList.add("hidden");
+    slashMenuItems = [];
+    slashMenuIndex = -1;
+}
+
+function selectSlashItem(idx){
+    var item = slashMenuItems[idx];
+    if(!item) return;
+    var inp = document.getElementById("messageInput");
+    if(item.content === "__rates__"){
+        insertRatesSummaryInChat();
+    } else {
+        inp.value = item.content;
+    }
+    document.getElementById("slashMenu").classList.add("hidden");
+    slashMenuItems = [];
+    slashMenuIndex = -1;
+    inp.focus();
+}
+
+function handleKeydown(e){
+    var menu = document.getElementById("slashMenu");
+    if(!menu || menu.classList.contains("hidden")){
+        if(e.key === "Enter" && !e.shiftKey){
+            e.preventDefault();
+            sendMessage();
+        }
+        return;
+    }
+    if(e.key === "ArrowDown"){
+        e.preventDefault();
+        slashMenuIndex = Math.min(slashMenuIndex + 1, slashMenuItems.length - 1);
+        highlightSlashItem();
+    } else if(e.key === "ArrowUp"){
+        e.preventDefault();
+        slashMenuIndex = Math.max(slashMenuIndex - 1, 0);
+        highlightSlashItem();
+    } else if(e.key === "Enter"){
+        e.preventDefault();
+        if(slashMenuIndex >= 0) selectSlashItem(slashMenuIndex);
+        else if(slashMenuItems.length > 0) selectSlashItem(0);
+    } else if(e.key === "Escape"){
+        menu.classList.add("hidden");
+        slashMenuItems = [];
+        slashMenuIndex = -1;
+    }
+}
+
+function highlightSlashItem(){
+    var items = document.querySelectorAll(".slash-item");
+    items.forEach(function(el, i){
+        el.classList.toggle("bg-[#1e2030]", i === slashMenuIndex);
+    });
+}
+
+// ========================
+// RATES & RULES MODAL
+// ========================
+var ratesRulesData = {rates: [], rules: []};
+var ratesRulesTab = "rates";
+
+async function openRatesRulesModal(){
+    try{
+        var r = await fetch("/api/rates-rules?token=" + encodeURIComponent(authToken));
+        if(r.ok){
+            var d = await r.json();
+            ratesRulesData = d;
+        }
+    }catch(e){ console.error("rates-rules fetch:", e); }
+    setRatesRulesTab("rates");
+    document.getElementById("ratesRulesModal").style.display = "flex";
+}
+
+function closeRatesRulesModal(){ document.getElementById("ratesRulesModal").style.display = "none"; }
+
+function setRatesRulesTab(tab){
+    ratesRulesTab = tab;
+    var rBtn = document.getElementById("tabRates");
+    var ruBtn = document.getElementById("tabRules");
+    var rPanel = document.getElementById("panelRates");
+    var ruPanel = document.getElementById("panelRules");
+    if(rBtn) rBtn.classList.toggle("bg-violet-700", tab === "rates");
+    if(ruBtn) ruBtn.classList.toggle("bg-violet-700", tab === "rules");
+    if(rBtn) rBtn.classList.toggle("bg-[#161722]", tab !== "rates");
+    if(ruBtn) ruBtn.classList.toggle("bg-[#161722]", tab !== "rules");
+    if(rPanel) rPanel.classList.toggle("hidden", tab !== "rates");
+    if(ruPanel) ruPanel.classList.toggle("hidden", tab !== "rules");
+    if(tab === "rates") renderRatesList();
+    else renderRulesList();
+}
+
+function renderRatesList(){
+    var c = document.getElementById("ratesList");
+    if(!c) return;
+    var rates = ratesRulesData.rates || [];
+    if(!rates.length){
+        c.innerHTML = '<div class="text-slate-600 text-xs py-4 text-center">Aucun tarif. Ajoutez-en un ci-dessous.</div>';
+        return;
+    }
+    c.innerHTML = rates.map(function(r, i){
+        return '<div class="flex items-center gap-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg px-3 py-2">' +
+            '<span class="flex-1 text-xs text-white">' + r.label + '</span>' +
+            '<span class="text-xs font-bold text-emerald-400">' + r.price + ' €</span>' +
+            '<button onclick="deleteRate(' + i + ')" class="text-slate-600 hover:text-red-400 transition"><i class="fa-solid fa-trash-can text-[10px]"></i></button>' +
+        '</div>';
+    }).join("");
+}
+
+function renderRulesList(){
+    var c = document.getElementById("rulesList");
+    if(!c) return;
+    var rules = ratesRulesData.rules || [];
+    if(!rules.length){
+        c.innerHTML = '<div class="text-slate-600 text-xs py-4 text-center">Aucune règle. Ajoutez-en une ci-dessous.</div>';
+        return;
+    }
+    c.innerHTML = rules.map(function(r, i){
+        return '<div class="flex items-start gap-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg px-3 py-2">' +
+            '<span class="flex-1 text-xs text-slate-200">' + r.text + '</span>' +
+            '<button onclick="deleteRule(' + i + ')" class="text-slate-600 hover:text-red-400 transition"><i class="fa-solid fa-trash-can text-[10px]"></i></button>' +
+        '</div>';
+    }).join("");
+}
+
+function addNewRate(){
+    var label = document.getElementById("newRateLabel").value.trim();
+    var price = parseFloat(document.getElementById("newRatePrice").value);
+    if(!label || isNaN(price)){ alert("Remplissez le label et le prix."); return; }
+    if(!ratesRulesData.rates) ratesRulesData.rates = [];
+    ratesRulesData.rates.push({label: label, price: price});
+    document.getElementById("newRateLabel").value = "";
+    document.getElementById("newRatePrice").value = "";
+    renderRatesList();
+}
+
+function addNewRule(){
+    var text = document.getElementById("newRuleText").value.trim();
+    if(!text){ alert("Saisissez le texte de la règle."); return; }
+    if(!ratesRulesData.rules) ratesRulesData.rules = [];
+    ratesRulesData.rules.push({text: text});
+    document.getElementById("newRuleText").value = "";
+    renderRulesList();
+}
+
+function deleteRate(i){
+    ratesRulesData.rates.splice(i, 1);
+    renderRatesList();
+}
+
+function deleteRule(i){
+    ratesRulesData.rules.splice(i, 1);
+    renderRulesList();
+}
+
+async function saveRatesRules(){
+    try{
+        var r = await fetch("/api/rates-rules", {method:"POST", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({token: authToken, rates: ratesRulesData.rates, rules: ratesRulesData.rules})});
+        var d = await r.json();
+        if(d.ok){ closeRatesRulesModal(); }
+        else alert("Erreur: " + (d.error || "Inconnue"));
+    }catch(e){ alert("Erreur réseau"); }
+}
+
+function insertRatesSummaryInChat(){
+    var rates = (ratesRulesData.rates || []);
+    if(!rates.length){ alert("Aucun tarif configuré. Ajoutez des tarifs d'abord."); return; }
+    var lines = rates.map(function(r){ return "• " + r.label + " → " + r.price + " €"; });
+    var summary = "💰 Tarifs :\n" + lines.join("\n");
+    var inp = document.getElementById("messageInput");
+    if(inp.value.trim()) inp.value += "\n" + summary;
+    else inp.value = summary;
+    closeRatesRulesModal();
+    inp.focus();
+}
+
+// ========================
+// AUDIO NOTIFICATION + TITRE ONGLET
+// ========================
+var _audioCtx = null;
+var _originalTitle = document.title;
+var _titleBlink = null;
+
+function playNotificationBip(){
+    try{
+        if(!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        var osc = _audioCtx.createOscillator();
+        var gain = _audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(_audioCtx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, _audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.15, _audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + 0.4);
+        osc.start(_audioCtx.currentTime);
+        osc.stop(_audioCtx.currentTime + 0.4);
+    }catch(e){ console.warn("AudioContext:", e); }
+}
+
+function startTabBlink(label){
+    if(_titleBlink) return;
+    var on = true;
+    _titleBlink = setInterval(function(){
+        document.title = on ? ("🔔 " + label) : _originalTitle;
+        on = !on;
+    }, 1200);
+}
+
+function stopTabBlink(){
+    if(_titleBlink){ clearInterval(_titleBlink); _titleBlink = null; }
+    document.title = _originalTitle;
+}
+
+// Hook into refreshData: trigger bip + blink when new unread messages detected
+var _prevUnreadCount = 0;
+var _prevUnreadUids = [];
+
+function checkForNewMessages(fans){
+    var unreadFans = fans.filter(function(f){ return f.is_unread; });
+    var newUids = unreadFans.map(function(f){ return f.user_id; });
+    var hasNewUnread = newUids.some(function(uid){ return !_prevUnreadUids.includes(uid); });
+    if(hasNewUnread && document.hidden){
+        playNotificationBip();
+        var firstName = unreadFans[0] ? unreadFans[0].name : "Nouveau message";
+        startTabBlink(firstName);
+    }
+    if(!document.hidden) stopTabBlink();
+    _prevUnreadUids = newUids;
+}
+
+document.addEventListener("visibilitychange", function(){
+    if(!document.hidden) stopTabBlink();
+});
+
+window.addEventListener("DOMContentLoaded", checkAuth);
+
+</script>
+</body>
+</html>
