@@ -1,126 +1,360 @@
 <!DOCTYPE html>
-<html lang="fr" class="dark">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Miwa · Dashboard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { font-family: 'Inter', -apple-system, sans-serif; }
+        .font-serif-title { font-family: 'Playfair Display', Georgia, serif; }
+        .font-avatar { font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif; font-style: italic; letter-spacing: 0.5px; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #1e2030; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .fan-card { border-left: 2px solid transparent; }
-        .fan-card:hover { background: #0f1018; }
-        .fan-card.active { background: #0f1018; border-left-color: #6d28d9; }
+        .fan-item { transition: background-color 0.12s ease; }
+        .chat-bubble-received { border-radius: 16px 16px 16px 4px; }
+        .chat-bubble-sent { border-radius: 16px 16px 4px 16px; }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.15); }
+        }
+        .animate-pulse-slow { animation: pulse-slow 2s infinite ease-in-out; }
+
+        /* THÈME SOMBRE COMPLET */
+        html.dark body { background-color: #0b0f19 !important; color: #f8fafc !important; }
+        html.dark .bg-\[\#f8f9fa\] { background-color: #0b0f19 !important; }
+        html.dark .bg-\[\#faf9f5\] { background-color: #111827 !important; }
+        html.dark .bg-\[\#f0ece4\] { background-color: #1e293b !important; color: #cbd5e1 !important; border-color: #334155 !important; }
+        html.dark .bg-\[\#ffffff\], html.dark .bg-white { background-color: #111827 !important; color: #f8fafc !important; }
+        html.dark .bg-\[\#e9edf0\] { background-color: #1e293b !important; color: #f8fafc !important; }
+        html.dark .text-\[\#0f172a\] { color: #f8fafc !important; }
+        html.dark .text-\[\#1e293b\] { color: #e2e8f0 !important; }
+        html.dark .text-\[\#1f1e1c\] { color: #f8fafc !important; }
+        html.dark .text-\[\#475569\], html.dark .text-\[\#64748b\], html.dark .text-\[\#5e5850\] { color: #94a3b8 !important; }
+        html.dark .border-\[\#e5e7eb\], html.dark .border-\[\#ded8ce\], html.dark .border-\[\#e2e8f0\] { border-color: #1e293b !important; }
+        html.dark .divide-\[\#f1f5f9\] > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b !important; }
+        html.dark .fan-item:hover { background-color: #1e293b !important; }
+        html.dark .fan-item.active-fan, html.dark .bg-\[\#edf2f7\] { background-color: #1e293b !important; }
+        html.dark #messageInput { background-color: #111827 !important; color: #f8fafc !important; }
+        html.dark #searchInput { background-color: #1e293b !important; color: #f8fafc !important; }
+        html.dark #sendMessageBox { background-color: #111827 !important; border-color: #1e293b !important; }
+        html.dark #profilePills { background-color: #111827 !important; border-color: #1e293b !important; }
+        html.dark .chat-bubble-received { background-color: #1e293b !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
+        html.dark .chat-bubble-sent { background-color: #0f172a !important; color: #f8fafc !important; border: 1px solid #1e293b !important; }
+        html.dark #fanContextMenu { background-color: #111827 !important; border-color: #1e293b !important; color: #f8fafc !important; }
+        html.dark #fanContextMenu .bg-\[\#f8f9fa\] { background-color: #1e293b !important; }
+        html.dark #mobileChatBack { background-color: #1e293b !important; color: #f8fafc !important; }
+        html.dark #mobileChatBack:hover { background-color: #334155 !important; }
+        html.dark #fanContextMenu button:hover { background-color: #1e293b !important; }
+        html.dark #settingsModal .modal-card { background-color: #111827 !important; border-color: #1e293b !important; color: #f8fafc !important; }
+        html.dark input, html.dark textarea, html.dark select {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+        html.dark .filter-tab.border-\[\#1e293b\] {
+            border-color: #38bdf8 !important;
+            color: #38bdf8 !important;
+        }
+
+
+        /* ── MOBILE RESPONSIVE ── */
+        @media (max-width: 767px) {
+            #sidebarPanel {
+                position: fixed;
+                inset: 0;
+                width: 100% !important;
+                z-index: 20;
+                transform: translateX(0);
+                transition: transform 0.25s ease;
+            }
+            #chatPanel {
+                position: fixed;
+                inset: 0;
+                z-index: 21;
+                transform: translateX(100%);
+                transition: transform 0.25s ease;
+                display: flex !important;
+                flex-direction: column;
+            }
+            #sidebarPanel.mobile-hidden {
+                transform: translateX(-100%);
+            }
+            #chatPanel.mobile-visible {
+                transform: translateX(0);
+            }
+            #mobileChatBack {
+                display: flex !important;
+            }
+            /* Larger touch targets for mobile */
+            .fan-item { min-height: 64px; }
+            #sendMessageBox textarea { font-size: 16px !important; } /* prevent zoom */
+        }
+        @media (min-width: 768px) {
+            #mobileChatBack { display: none !important; }
+        }
     </style>
 </head>
-<body class="bg-[#0a0b0f] text-slate-300 h-screen w-screen overflow-hidden flex flex-col">
+<body class="bg-[#f8f9fa] text-[#0f172a] h-screen w-screen overflow-hidden flex flex-col">
 
 <!-- Auth Modal -->
-<div id="authModal" style="display:flex;" class="fixed inset-0 bg-black/90 z-50 items-center justify-center">
-    <div class="bg-[#0f1018] border border-[#1e2030] p-8 rounded-2xl w-80 shadow-2xl">
+<div id="authModal" style="display:flex;" class="fixed inset-0 bg-black/40 z-50 items-center justify-center">
+    <div class="bg-[#ffffff] border border-[#ded8ce] p-8 rounded-2xl w-80 shadow-2xl">
         <div class="mb-6">
-            <div class="text-white font-semibold text-sm mb-1">Miwa Dashboard</div>
-            <div class="text-slate-500 text-xs">Accès restreint</div>
+            <div class="text-[#1f1e1c] font-semibold text-sm mb-1">Miwa Dashboard</div>
+            <div class="text-[#8e8880] text-xs">Accès restreint</div>
         </div>
         <div class="space-y-3">
             <div class="relative">
                 <input type="password" id="authPassword" placeholder="Mot de passe"
                     autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false"
                     onkeydown="if(event.key==='Enter') handleAuth(event);"
-                    class="w-full pl-3 pr-9 py-2.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500 transition">
-                <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 text-xs">
+                    class="w-full pl-3 pr-9 py-2.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] placeholder-[#9e988f] focus:outline-none focus:border-[#a67070] transition">
+                <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-2.5 text-[#7a746c] hover:text-[#3d3a36] text-xs">
                     <i id="eyeIcon" class="fa-regular fa-eye"></i>
                 </button>
             </div>
             <div id="authError" class="text-[11px] text-red-400 hidden">Mot de passe incorrect</div>
             <button type="button" onclick="handleAuth(event)"
-                class="w-full py-2.5 bg-white text-black font-medium rounded-lg text-xs hover:bg-slate-100 transition cursor-pointer">
+                class="w-full py-2.5 bg-[#a67070] hover:bg-[#946060] text-white font-medium rounded-lg text-xs transition cursor-pointer shadow-xs">
                 Accéder
             </button>
         </div>
     </div>
 </div>
 
-<!-- Status / Tags Modal -->
-<div id="statusModal" style="display:none;" class="fixed inset-0 bg-black/80 z-40 items-center justify-center p-4">
-    <div class="bg-[#0f1018] border border-[#1e2030] p-5 rounded-2xl w-full max-w-sm shadow-2xl space-y-4">
-        <div class="flex items-center justify-between border-b border-[#1a1b26] pb-3">
-            <div>
-                <span class="text-sm font-semibold text-white">Choisir une étiquette</span>
-                <div id="statusModalFanName" class="text-[11px] text-slate-500 mt-0.5">Pour ce fan</div>
+
+<!-- Modal Paramètres Utilisateur -->
+<div id="settingsModal" style="display:none;" class="fixed inset-0 bg-black/50 z-50 items-center justify-center p-4">
+    <div class="modal-card bg-white border border-[#e5e7eb] rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5">
+        <div class="flex items-center justify-between pb-3 border-b border-[#e5e7eb]">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-[#1e293b] text-white flex items-center justify-center text-xs shadow-xs">
+                    <i class="fa-solid fa-gear"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-[#0f172a]">Paramètres de l'application</h3>
+                    <p class="text-[11px] text-[#64748b]">Personnalisation et préférences utilisateur</p>
+                </div>
             </div>
-            <button onclick="closeStatusModal()" class="text-slate-500 hover:text-slate-300 text-sm p-1"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeSettingsModal()" class="w-7 h-7 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition flex items-center justify-center text-sm">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-[#0f172a] mb-1">
+                    Thème & Mode d'affichage
+                </label>
+                <p class="text-[11px] text-[#64748b] mb-3">
+                    Basculez entre le mode clair (blanc épuré), le mode sombre ardoise ou suivez automatiquement le système.
+                </p>
+                <div class="grid grid-cols-3 gap-2.5">
+                    <button type="button" onclick="setThemePreference('light')" id="themeBtnLight"
+                        class="theme-choice-btn flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-[#e5e7eb] bg-[#f8f9fa] hover:border-[#cbd5e1] transition cursor-pointer text-center">
+                        <i class="fa-solid fa-sun text-amber-500 text-lg"></i>
+                        <span class="text-xs font-semibold text-[#0f172a]">Mode Clair</span>
+                        <span class="text-[10px] text-[#64748b]">Blanc épuré</span>
+                    </button>
+                    <button type="button" onclick="setThemePreference('dark')" id="themeBtnDark"
+                        class="theme-choice-btn flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-[#e5e7eb] bg-[#f8f9fa] hover:border-[#cbd5e1] transition cursor-pointer text-center">
+                        <i class="fa-solid fa-moon text-sky-500 text-lg"></i>
+                        <span class="text-xs font-semibold text-[#0f172a]">Mode Sombre</span>
+                        <span class="text-[10px] text-[#64748b]">Nuit ardoise</span>
+                    </button>
+                    <button type="button" onclick="setThemePreference('auto')" id="themeBtnAuto"
+                        class="theme-choice-btn flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-[#1e293b] bg-[#e9edf0] transition cursor-pointer text-center">
+                        <i class="fa-solid fa-circle-half-stroke text-[#1e293b] text-lg"></i>
+                        <span class="text-xs font-semibold text-[#0f172a]">Automatique</span>
+                        <span class="text-[10px] text-[#64748b]">Suit le système</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-[#e5e7eb] flex items-center justify-between text-xs text-[#64748b]">
+                <span>Version Miwa Core</span>
+                <span class="font-mono text-[11px] font-semibold text-[#1e293b]">v2.4 (2026)</span>
+            </div>
+        </div>
+
+        <div class="pt-2 flex justify-end">
+            <button type="button" onclick="closeSettingsModal()"
+                class="px-4 py-2 bg-[#1e293b] hover:bg-[#0f172a] text-white text-xs font-semibold rounded-lg shadow-xs transition">
+                Enregistrer & Fermer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Menu contextuel personnalisé pour discussion (Clic droit) -->
+<div id="fanContextMenu" style="display:none;" class="fixed z-50 w-64 bg-white border border-[#e5e7eb] rounded-xl shadow-2xl py-1 text-xs text-[#0f172a] select-none">
+    <div class="px-3.5 py-2 border-b border-[#f1f5f9] mb-1 bg-[#f8f9fa]">
+        <div class="text-[10px] text-[#94a3b8] uppercase tracking-wider font-semibold">Discussion avec</div>
+        <div id="contextMenuFanName" class="font-bold text-[#0f172a] truncate">Fan</div>
+    </div>
+    
+    <button onclick="contextActionHideOnce()" class="w-full px-3.5 py-2 text-left hover:bg-[#f1f5f9] flex items-center gap-2.5 transition">
+        <i class="fa-regular fa-eye-slash text-[#64748b] w-4 text-center"></i>
+        <div>
+            <div class="font-medium text-[#1e293b]">Masquer la discussion</div>
+            <div class="text-[10px] text-[#94a3b8]">Supprimer 1 fois (réapparaît au prochain message)</div>
+        </div>
+    </button>
+
+    <button onclick="contextActionEditTag()" class="w-full px-3.5 py-2 text-left hover:bg-[#f1f5f9] flex items-center gap-2.5 transition">
+        <i class="fa-solid fa-tag text-[#64748b] w-4 text-center"></i>
+        <div>
+            <div class="font-medium text-[#1e293b]">Changer l'étiquette</div>
+            <div class="text-[10px] text-[#94a3b8]">Attribuer un statut ou tag</div>
+        </div>
+    </button>
+
+    <button onclick="contextActionToggleRead()" class="w-full px-3.5 py-2 text-left hover:bg-[#f1f5f9] flex items-center gap-2.5 transition">
+        <i class="fa-regular fa-envelope text-[#64748b] w-4 text-center" id="contextReadIcon"></i>
+        <div>
+            <div class="font-medium text-[#1e293b]" id="contextReadText">Marquer comme lu</div>
+            <div class="text-[10px] text-[#94a3b8]">Modifier le statut de lecture</div>
+        </div>
+    </button>
+
+    <button onclick="contextActionCopyId()" class="w-full px-3.5 py-2 text-left hover:bg-[#f1f5f9] flex items-center gap-2.5 transition">
+        <i class="fa-regular fa-copy text-[#64748b] w-4 text-center"></i>
+        <div>
+            <div class="font-medium text-[#1e293b]">Copier l'ID Telegram</div>
+            <div class="text-[10px] text-[#94a3b8]">Copier dans le presse-papier</div>
+        </div>
+    </button>
+
+    <button onclick="contextActionFanInfo()" class="w-full px-3.5 py-2 text-left hover:bg-[#f0f9ff] flex items-center gap-2.5 transition">
+        <i class="fa-regular fa-clock text-[#2563eb] w-4 text-center"></i>
+        <div>
+            <div class="font-medium text-[#1e293b]">Infos &amp; Ancienneté</div>
+            <div class="text-[10px] text-[#94a3b8]">Voir depuis quand on se parle</div>
+        </div>
+    </button>
+
+    <div class="my-1 border-t border-[#f1f5f9]"></div>
+
+    <button onclick="contextActionDeletePermanent()" class="w-full px-3.5 py-2 text-left hover:bg-red-50 text-red-600 flex items-center gap-2.5 transition">
+        <i class="fa-regular fa-trash-can w-4 text-center"></i>
+        <div>
+            <div class="font-semibold">Supprimer définitivement</div>
+            <div class="text-[10px] text-red-400">Efface le fan et tous ses messages</div>
+        </div>
+    </button>
+</div>
+
+<!-- Modale Infos & Ancienneté Fan -->
+<div id="fanInfoModal" style="display:none;" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closeFanInfoModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-[#1e40af] to-[#2563eb] px-5 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                    <i class="fa-regular fa-clock text-white text-base"></i>
+                </div>
+                <div>
+                    <div class="text-white font-semibold text-sm" id="fanInfoModalName">Fan</div>
+                    <div class="text-blue-200 text-[10px]">Infos &amp; Ancienneté</div>
+                </div>
+            </div>
+            <button onclick="closeFanInfoModal()" class="text-white/70 hover:text-white text-lg leading-none">&times;</button>
+        </div>
+        <!-- Content -->
+        <div class="p-5 space-y-4" id="fanInfoModalBody">
+            <div class="flex items-center justify-center py-6">
+                <div class="w-6 h-6 border-2 border-[#2563eb] border-t-transparent rounded-full animate-spin"></div>
+                <span class="ml-3 text-sm text-[#64748b]">Chargement…</span>
+            </div>
+        </div>
+        <!-- Footer -->
+        <div class="px-5 pb-5">
+            <button onclick="closeFanInfoModal()" class="w-full py-2 bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#475569] text-sm font-medium rounded-xl transition">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Status / Tags Modal -->
+<div id="statusModal" style="display:none;" class="fixed inset-0 bg-black/40 z-40 items-center justify-center p-4">
+    <div class="bg-[#ffffff] border border-[#ded8ce] p-5 rounded-2xl w-full max-w-sm shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-[#ded8ce] pb-3">
+            <div>
+                <span class="text-sm font-semibold text-[#1f1e1c]">Choisir une étiquette</span>
+                <div id="statusModalFanName" class="text-[11px] text-[#7a746c] mt-0.5">Pour ce fan</div>
+            </div>
+            <button onclick="closeStatusModal()" class="text-[#7a746c] hover:text-[#3d3a36] text-sm p-1"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <!-- Liste des étiquettes existantes -->
         <div>
-            <label class="text-[11px] font-medium text-slate-400 block mb-2">Étiquettes disponibles</label>
+            <label class="text-[11px] font-medium text-[#5e5850] block mb-2">Étiquettes disponibles</label>
             <div id="tagsListContainer" class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                 <!-- Rendu dynamique des tags -->
             </div>
         </div>
 
         <!-- Section Créer une nouvelle étiquette -->
-        <div class="pt-3 border-t border-[#1a1b26] space-y-2.5">
-            <span class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+        <div class="pt-3 border-t border-[#ded8ce] space-y-2.5">
+            <span class="text-xs font-medium text-[#3d3a36] flex items-center gap-1.5">
                 <i class="fa-solid fa-plus text-[10px] text-violet-400"></i> Nouvelle étiquette personnalisée
             </span>
             <input type="text" id="newTagNameInput" placeholder="Nom de l'étiquette (ex: VIP, Curieux...)"
-                class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500">
+                class="w-full px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] placeholder-slate-600 focus:outline-none focus:border-violet-500">
 
             <div>
-                <span class="text-[10px] text-slate-500 block mb-1.5">Choisir une couleur :</span>
+                <span class="text-[10px] text-[#7a746c] block mb-1.5">Choisir une couleur :</span>
                 <div id="colorPalette" class="flex items-center gap-2 flex-wrap">
                     <!-- Rendu dynamique de la palette -->
                 </div>
             </div>
 
-            <button onclick="createNewTagAndApply()" class="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-md shadow-violet-900/30 active:scale-[0.98]">
+            <button onclick="createNewTagAndApply()" class="w-full py-2.5 bg-[#1e293b] hover:bg-[#0f172a] text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-[0.98]">
                 <i class="fa-solid fa-check text-[11px]"></i> Créer et appliquer
             </button>
         </div>
 
-        <div class="flex items-center justify-end pt-1 border-t border-[#1a1b26]">
-            <button onclick="closeStatusModal()" class="px-4 py-1.5 text-xs text-slate-400 hover:text-white">Fermer</button>
+        <div class="flex items-center justify-end pt-1 border-t border-[#ded8ce]">
+            <button onclick="closeStatusModal()" class="px-4 py-1.5 text-xs text-[#5e5850] hover:text-[#1f1e1c]">Fermer</button>
         </div>
     </div>
 </div>
 
 <!-- Emoji Settings Modal -->
-<div id="emojiSettingsModal" style="display:none;" class="fixed inset-0 bg-black/80 z-40 items-center justify-center p-4">
-    <div class="bg-[#0f1018] border border-[#1e2030] p-5 rounded-2xl w-full max-w-md shadow-2xl space-y-4">
-        <div class="flex items-center justify-between border-b border-[#1a1b26] pb-3">
+<div id="emojiSettingsModal" style="display:none;" class="fixed inset-0 bg-black/40 z-40 items-center justify-center p-4">
+    <div class="bg-[#ffffff] border border-[#ded8ce] p-5 rounded-2xl w-full max-w-md shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-[#ded8ce] pb-3">
             <div>
-                <span class="text-sm font-semibold text-white">Personnaliser les Emojis rapides</span>
-                <div class="text-[11px] text-slate-500 mt-0.5">Modifie ou ajoute les emojis qui apparaissent dans ta barre</div>
+                <span class="text-sm font-semibold text-[#1f1e1c]">Personnaliser les Emojis rapides</span>
+                <div class="text-[11px] text-[#7a746c] mt-0.5">Modifie ou ajoute les emojis qui apparaissent dans ta barre</div>
             </div>
-            <button onclick="closeEmojiSettingsModal()" class="text-slate-500 hover:text-slate-300 text-sm p-1"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeEmojiSettingsModal()" class="text-[#7a746c] hover:text-[#3d3a36] text-sm p-1"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <div>
-            <label class="text-[11px] font-medium text-slate-400 block mb-1.5">Tes emojis actuels (séparés par un espace)</label>
-            <input type="text" id="customEmojiInput" class="w-full px-3 py-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-sm text-white focus:outline-none focus:border-violet-500">
+            <label class="text-[11px] font-medium text-[#5e5850] block mb-1.5">Tes emojis actuels (séparés par un espace)</label>
+            <input type="text" id="customEmojiInput" class="w-full px-3 py-2 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-sm text-[#1f1e1c] focus:outline-none focus:border-violet-500">
         </div>
 
         <div>
-            <span class="text-[10px] text-slate-500 block mb-1.5">Clique sur une suggestion pour l'ajouter :</span>
-            <div id="suggestedEmojiPicker" class="flex items-center gap-1.5 flex-wrap p-2 bg-[#0a0b0f] rounded-xl border border-[#181924] max-h-36 overflow-y-auto">
+            <span class="text-[10px] text-[#7a746c] block mb-1.5">Clique sur une suggestion pour l'ajouter :</span>
+            <div id="suggestedEmojiPicker" class="flex items-center gap-1.5 flex-wrap p-2 bg-[#faf9f5] rounded-xl border border-[#181924] max-h-36 overflow-y-auto">
                 <!-- Rendu des suggestions -->
             </div>
         </div>
 
-        <div class="flex items-center justify-between pt-2 border-t border-[#1a1b26]">
-            <button onclick="resetDefaultEmojis()" class="text-xs text-slate-500 hover:text-slate-300">Réinitialiser</button>
+        <div class="flex items-center justify-between pt-2 border-t border-[#ded8ce]">
+            <button onclick="resetDefaultEmojis()" class="text-xs text-[#7a746c] hover:text-[#3d3a36]">Réinitialiser</button>
             <div class="flex items-center gap-2">
-                <button onclick="closeEmojiSettingsModal()" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white">Annuler</button>
-                <button onclick="saveCustomEmojis()" class="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs rounded-lg transition shadow-md shadow-violet-900/30">Enregistrer</button>
+                <button onclick="closeEmojiSettingsModal()" class="px-3 py-1.5 text-xs text-[#5e5850] hover:text-[#1f1e1c]">Annuler</button>
+                <button onclick="saveCustomEmojis()" class="px-4 py-1.5 bg-[#a67070] hover:bg-[#946060] text-white font-semibold text-xs rounded-lg transition shadow-md shadow-violet-900/30">Enregistrer</button>
             </div>
         </div>
     </div>
@@ -128,14 +362,14 @@
 
 <!-- Profile Modal -->
 <!-- Fiche Fan CRM Modal -->
-<div id="profileModal" style="display:none;" class="fixed inset-0 bg-black/80 z-40 items-center justify-center p-4">
-    <div class="bg-[#0f1018] border border-[#1e2030] p-6 rounded-2xl w-full max-w-lg shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
-        <div class="flex items-center justify-between pb-2 border-b border-[#1e2030] shrink-0">
+<div id="profileModal" style="display:none;" class="fixed inset-0 bg-black/40 z-40 items-center justify-center p-4">
+    <div class="bg-[#ffffff] border border-[#ded8ce] p-6 rounded-2xl w-full max-w-lg shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+        <div class="flex items-center justify-between pb-2 border-b border-[#ded8ce] shrink-0">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-id-card text-sky-400 text-xs"></i>
-                <span class="text-sm font-medium text-white">Fiche CRM & Ventes du Fan</span>
+                <span class="text-sm font-medium text-[#1f1e1c]">Fiche CRM & Ventes du Fan</span>
             </div>
-            <button onclick="closeProfileModal()" class="text-slate-500 hover:text-slate-300 text-xs"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeProfileModal()" class="text-[#7a746c] hover:text-[#3d3a36] text-xs"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="flex-1 overflow-y-auto space-y-3 text-xs pr-1">
             <!-- Section Identité -->
@@ -143,77 +377,77 @@
                 <div class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider">Identité & Situation</div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div class="col-span-2">
-                        <label class="text-slate-500 mb-1 block text-[10px]">Prénom réel</label>
-                        <input type="text" id="profPrenom" placeholder="Marc, Alex..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                        <label class="text-[#7a746c] mb-1 block text-[10px]">Prénom réel</label>
+                        <input type="text" id="profPrenom" placeholder="Marc, Alex..." class="w-full px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-[#1f1e1c] focus:border-slate-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="text-slate-500 mb-1 block text-[10px]">Âge</label>
-                        <input type="text" id="profAge" placeholder="38 ans" class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                        <label class="text-[#7a746c] mb-1 block text-[10px]">Âge</label>
+                        <input type="text" id="profAge" placeholder="38 ans" class="w-full px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-[#1f1e1c] focus:border-slate-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="text-slate-500 mb-1 block text-[10px]">Ville / Pays</label>
-                        <input type="text" id="profVille" placeholder="Lyon, Suisse..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                        <label class="text-[#7a746c] mb-1 block text-[10px]">Ville / Pays</label>
+                        <input type="text" id="profVille" placeholder="Lyon, Suisse..." class="w-full px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-[#1f1e1c] focus:border-slate-500 focus:outline-none">
                     </div>
                 </div>
                 <div>
-                    <label class="text-slate-500 mb-1 block text-[10px]">Métier / Situation personnelle</label>
-                    <input type="text" id="profMetier" placeholder="Ingénieur, célibataire, deux chats..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                    <label class="text-[#7a746c] mb-1 block text-[10px]">Métier / Situation personnelle</label>
+                    <input type="text" id="profMetier" placeholder="Ingénieur, célibataire, deux chats..." class="w-full px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-[#1f1e1c] focus:border-slate-500 focus:outline-none">
                 </div>
             </div>
 
             <!-- Section Ventes & Valeur -->
-            <div class="pt-2 border-t border-[#1a1b24] space-y-2">
+            <div class="pt-2 border-t border-[#ded8ce] space-y-2">
                 <div class="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
                     <span>Ventes & Valeur Client (LTV)</span>
                     <span id="profSpentDisplay" class="text-emerald-400 font-bold"></span>
                 </div>
                 <div>
-                    <label class="text-slate-500 mb-1 block text-[10px]">Total Dépensé (€)</label>
+                    <label class="text-[#7a746c] mb-1 block text-[10px]">Total Dépensé (€)</label>
                     <div class="relative">
                         <input type="number" id="profTotalSpent" placeholder="0" min="0" step="1"
-                            class="w-full pl-7 pr-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white font-medium focus:border-emerald-500 focus:outline-none">
-                        <span class="absolute left-2.5 top-1.5 text-slate-500 text-xs">€</span>
+                            class="w-full pl-7 pr-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-[#1f1e1c] font-medium focus:border-emerald-500 focus:outline-none">
+                        <span class="absolute left-2.5 top-1.5 text-[#7a746c] text-xs">€</span>
                     </div>
                 </div>
             </div>
 
             <!-- Section Psychologie & Fétiches -->
-            <div class="pt-2 border-t border-[#1a1b24] space-y-2">
+            <div class="pt-2 border-t border-[#ded8ce] space-y-2">
                 <div class="text-[11px] font-semibold text-violet-400 uppercase tracking-wider">Psychologie & Préférences</div>
                 <div>
-                    <label class="text-slate-500 mb-1 block text-[10px]">Fétiches / Ce qui le fait craquer</label>
-                    <input type="text" id="profFetiches" placeholder="Lingerie rouge, pieds, domination douce, compliments..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                    <label class="text-[#7a746c] mb-1 block text-[10px]">Fétiches / Ce qui le fait craquer</label>
+                    <input type="text" id="profFetiches" placeholder="Lingerie rouge, pieds, domination douce, compliments..." class="w-full px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-[#1f1e1c] focus:border-slate-500 focus:outline-none">
                 </div>
                 <div>
-                    <label class="text-slate-500 mb-1 block text-[10px]">Limites strictes / Ce qu'il déteste</label>
-                    <input type="text" id="profLimites" placeholder="Pas de vulgarité, pas de sport, ne pas parler d'argent brutalement..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none">
+                    <label class="text-[#7a746c] mb-1 block text-[10px]">Limites strictes / Ce qu'il déteste</label>
+                    <input type="text" id="profLimites" placeholder="Pas de vulgarité, pas de sport, ne pas parler d'argent brutalement..." class="w-full px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-[#1f1e1c] focus:border-slate-500 focus:outline-none">
                 </div>
                 <div>
-                    <label class="text-slate-500 mb-1 block text-[10px]">Notes libres pour l'équipe</label>
-                    <textarea id="profNotes" rows="2" placeholder="Informations complémentaires, anecdotes..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-slate-500 focus:outline-none resize-none"></textarea>
+                    <label class="text-[#7a746c] mb-1 block text-[10px]">Notes libres pour l'équipe</label>
+                    <textarea id="profNotes" rows="2" placeholder="Informations complémentaires, anecdotes..." class="w-full px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-[#1f1e1c] focus:border-slate-500 focus:outline-none resize-none"></textarea>
                 </div>
             </div>
 
             <!-- Section Relance (Follow-up) -->
-            <div class="pt-2 border-t border-[#1a1b24] space-y-2">
+            <div class="pt-2 border-t border-[#ded8ce] space-y-2">
                 <div class="text-[11px] font-semibold text-amber-400 uppercase tracking-wider flex items-center justify-between">
                     <span>Programmation de Relance</span>
-                    <button type="button" onclick="clearFollowup()" class="text-[10px] text-slate-500 hover:text-red-400 transition">Effacer la relance</button>
+                    <button type="button" onclick="clearFollowup()" class="text-[10px] text-[#7a746c] hover:text-red-400 transition">Effacer la relance</button>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                        <label class="text-slate-500 mb-1 block text-[10px]">Date de relance</label>
-                        <input type="date" id="profFollowupDate" class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-amber-500 focus:outline-none">
+                        <label class="text-[#7a746c] mb-1 block text-[10px]">Date de relance</label>
+                        <input type="date" id="profFollowupDate" class="w-full px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-[#1f1e1c] focus:border-amber-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="text-slate-500 mb-1 block text-[10px]">Note de relance</label>
-                        <input type="text" id="profFollowupNote" placeholder="Proposer pack lingerie à 18h..." class="w-full px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-white focus:border-amber-500 focus:outline-none">
+                        <label class="text-[#7a746c] mb-1 block text-[10px]">Note de relance</label>
+                        <input type="text" id="profFollowupNote" placeholder="Proposer pack lingerie à 18h..." class="w-full px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-[#1f1e1c] focus:border-amber-500 focus:outline-none">
                     </div>
                 </div>
             </div>
         </div>
-        <div class="flex items-center justify-end gap-2 pt-2 border-t border-[#1e2030] shrink-0">
-            <button onclick="closeProfileModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-white transition">Annuler</button>
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-[#ded8ce] shrink-0">
+            <button onclick="closeProfileModal()" class="px-3 py-1.5 text-xs text-[#7a746c] hover:text-[#1f1e1c] transition">Annuler</button>
             <button onclick="saveProfile()" class="px-4 py-1.5 bg-white text-black text-xs font-semibold rounded-lg hover:bg-slate-200 transition flex items-center gap-1.5">
                 <i class="fa-solid fa-floppy-disk text-[10px]"></i> Enregistrer la fiche
             </button>
@@ -222,33 +456,33 @@
 </div>
 
 <!-- Rates & Rules Modal -->
-<div id="ratesRulesModal" style="display:none;" class="fixed inset-0 bg-black/85 z-40 items-center justify-center p-4">
-    <div class="bg-[#0f1018] border border-[#1e2030] p-6 rounded-2xl w-full max-w-2xl shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
-        <div class="flex items-center justify-between pb-2 border-b border-[#1e2030] shrink-0">
+<div id="ratesRulesModal" style="display:none;" class="fixed inset-0 bg-black/40 z-40 items-center justify-center p-4">
+    <div class="bg-[#ffffff] border border-[#ded8ce] p-6 rounded-2xl w-full max-w-2xl shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between pb-2 border-b border-[#ded8ce] shrink-0">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-tags text-emerald-400 text-xs"></i>
-                <span class="text-sm font-medium text-white">Tarifs officiels & Règles de discussion</span>
+                <span class="text-sm font-medium text-[#1f1e1c]">Tarifs officiels & Règles de discussion</span>
             </div>
-            <button onclick="closeRatesRulesModal()" class="text-slate-500 hover:text-slate-300 text-xs"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeRatesRulesModal()" class="text-[#7a746c] hover:text-[#3d3a36] text-xs"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <!-- Onglets -->
-        <div class="flex items-center gap-2 border-b border-[#1e2030] pb-2 shrink-0">
-            <button onclick="setRatesRulesTab('rates')" id="ratesTabBtn" class="px-3 py-1 rounded-lg text-xs font-medium bg-emerald-600 text-white transition">🏷️ Grille des Tarifs</button>
-            <button onclick="setRatesRulesTab('rules')" id="rulesTabBtn" class="px-3 py-1 rounded-lg text-xs font-medium bg-[#161722] text-slate-400 hover:text-white transition">📋 Règles d'or du Chatting</button>
+        <div class="flex items-center gap-2 border-b border-[#ded8ce] pb-2 shrink-0">
+            <button onclick="setRatesRulesTab('rates')" id="ratesTabBtn" class="px-3 py-1 rounded-lg text-xs font-medium bg-emerald-600 text-[#1f1e1c] transition">🏷️ Grille des Tarifs</button>
+            <button onclick="setRatesRulesTab('rules')" id="rulesTabBtn" class="px-3 py-1 rounded-lg text-xs font-medium bg-[#f0ece4] text-[#5e5850] hover:text-[#1f1e1c] transition">📋 Règles d'or du Chatting</button>
         </div>
 
         <!-- Contenu Tarifs -->
         <div id="ratesTabContent" class="flex-1 overflow-y-auto space-y-3 pr-1">
             <div id="ratesListContainer" class="space-y-2"></div>
-            <div class="p-3 rounded-xl bg-[#0a0b0f] border border-[#1e2030] space-y-2">
-                <div class="text-[11px] font-semibold text-slate-400">Ajouter un nouveau tarif</div>
+            <div class="p-3 rounded-xl bg-[#faf9f5] border border-[#ded8ce] space-y-2">
+                <div class="text-[11px] font-semibold text-[#5e5850]">Ajouter un nouveau tarif</div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <input type="text" id="newRateTitle" placeholder="Intitulé (ex: Vidéo lingerie 30s)" class="sm:col-span-1 px-3 py-1.5 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white focus:outline-none focus:border-slate-500">
-                    <input type="text" id="newRatePrice" placeholder="Prix (ex: 30 €)" class="px-3 py-1.5 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white focus:outline-none focus:border-slate-500">
-                    <input type="text" id="newRateDesc" placeholder="Description courte" class="px-3 py-1.5 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white focus:outline-none focus:border-slate-500">
+                    <input type="text" id="newRateTitle" placeholder="Intitulé (ex: Vidéo lingerie 30s)" class="sm:col-span-1 px-3 py-1.5 bg-[#ffffff] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] focus:outline-none focus:border-slate-500">
+                    <input type="text" id="newRatePrice" placeholder="Prix (ex: 30 €)" class="px-3 py-1.5 bg-[#ffffff] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] focus:outline-none focus:border-slate-500">
+                    <input type="text" id="newRateDesc" placeholder="Description courte" class="px-3 py-1.5 bg-[#ffffff] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] focus:outline-none focus:border-slate-500">
                 </div>
-                <button onclick="addNewRate()" class="px-3 py-1.5 bg-[#161722] hover:bg-[#202232] border border-[#242738] text-slate-200 text-xs font-medium rounded-lg transition flex items-center gap-1">
+                <button onclick="addNewRate()" class="px-3 py-1.5 bg-[#f0ece4] hover:bg-[#e4ded4] border border-[#ded8ce] text-[#2d2b29] text-xs font-medium rounded-lg transition flex items-center gap-1">
                     <i class="fa-solid fa-plus text-[9px]"></i> Ajouter ce tarif
                 </button>
             </div>
@@ -257,11 +491,11 @@
         <!-- Contenu Règles -->
         <div id="rulesTabContent" class="hidden flex-1 overflow-y-auto space-y-3 pr-1">
             <div id="rulesListContainer" class="space-y-2"></div>
-            <div class="p-3 rounded-xl bg-[#0a0b0f] border border-[#1e2030] space-y-2">
-                <div class="text-[11px] font-semibold text-slate-400">Ajouter une nouvelle règle</div>
+            <div class="p-3 rounded-xl bg-[#faf9f5] border border-[#ded8ce] space-y-2">
+                <div class="text-[11px] font-semibold text-[#5e5850]">Ajouter une nouvelle règle</div>
                 <div class="flex items-center gap-2">
-                    <input type="text" id="newRuleText" placeholder="Ex: Ne jamais promettre d'appel vocal imprévu" class="flex-1 px-3 py-1.5 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white focus:outline-none focus:border-slate-500">
-                    <button onclick="addNewRule()" class="px-3 py-1.5 bg-[#161722] hover:bg-[#202232] border border-[#242738] text-slate-200 text-xs font-medium rounded-lg transition flex items-center gap-1 shrink-0">
+                    <input type="text" id="newRuleText" placeholder="Ex: Ne jamais promettre d'appel vocal imprévu" class="flex-1 px-3 py-1.5 bg-[#ffffff] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] focus:outline-none focus:border-slate-500">
+                    <button onclick="addNewRule()" class="px-3 py-1.5 bg-[#f0ece4] hover:bg-[#e4ded4] border border-[#ded8ce] text-[#2d2b29] text-xs font-medium rounded-lg transition flex items-center gap-1 shrink-0">
                         <i class="fa-solid fa-plus text-[9px]"></i> Ajouter
                     </button>
                 </div>
@@ -269,13 +503,13 @@
         </div>
 
         <!-- Pied de modal -->
-        <div class="flex items-center justify-between pt-2 border-t border-[#1e2030] shrink-0">
-            <button onclick="insertRatesSummaryInChat()" class="px-3 py-1.5 bg-[#1a1c29] hover:bg-[#222436] border border-[#2a2d40] text-emerald-300 text-xs font-medium rounded-lg transition flex items-center gap-1.5" title="Insérer le récapitulatif des prix dans le message">
+        <div class="flex items-center justify-between pt-2 border-t border-[#ded8ce] shrink-0">
+            <button onclick="insertRatesSummaryInChat()" class="px-3 py-1.5 bg-[#f0ece4] hover:bg-[#e4ded4] border border-[#ded8ce] text-emerald-300 text-xs font-medium rounded-lg transition flex items-center gap-1.5" title="Insérer le récapitulatif des prix dans le message">
                 <i class="fa-solid fa-share text-[10px]"></i> Insérer les prix dans le chat
             </button>
             <div class="flex items-center gap-2">
-                <button onclick="closeRatesRulesModal()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-white transition">Fermer</button>
-                <button onclick="saveRatesRules()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
+                <button onclick="closeRatesRulesModal()" class="px-3 py-1.5 text-xs text-[#7a746c] hover:text-[#1f1e1c] transition">Fermer</button>
+                <button onclick="saveRatesRules()" class="px-4 py-1.5 bg-[#638e7f] hover:bg-[#527b6d] text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
                     <i class="fa-solid fa-floppy-disk text-[10px]"></i> Sauvegarder
                 </button>
             </div>
@@ -284,32 +518,32 @@
 </div>
 
 <!-- Payment Links Modal -->
-<div id="paymentLinksModal" style="display:none;" class="fixed inset-0 bg-black/80 z-40 items-center justify-center p-4">
-    <div class="bg-[#0f1018] border border-[#1e2030] p-6 rounded-2xl w-full max-w-xl shadow-2xl space-y-4">
-        <div class="flex items-center justify-between pb-2 border-b border-[#1e2030]">
+<div id="paymentLinksModal" style="display:none;" class="fixed inset-0 bg-black/40 z-40 items-center justify-center p-4">
+    <div class="bg-[#ffffff] border border-[#ded8ce] p-6 rounded-2xl w-full max-w-xl shadow-2xl space-y-4">
+        <div class="flex items-center justify-between pb-2 border-b border-[#ded8ce]">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-link text-violet-400 text-xs"></i>
-                <span class="text-sm font-medium text-white">Liens de vente & paiement</span>
+                <span class="text-sm font-medium text-[#1f1e1c]">Liens de vente & paiement</span>
             </div>
-            <button onclick="closePaymentLinksModal()" class="text-slate-500 hover:text-slate-300 text-xs"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closePaymentLinksModal()" class="text-[#7a746c] hover:text-[#3d3a36] text-xs"><i class="fa-solid fa-xmark"></i></button>
         </div>
         
         <!-- Liste des liens enregistrés -->
         <div id="paymentLinksList" class="space-y-2 max-h-64 overflow-y-auto pr-1">
-            <div class="text-center text-slate-600 text-xs py-4">Chargement des liens...</div>
+            <div class="text-center text-[#9e988f] text-xs py-4">Chargement des liens...</div>
         </div>
 
         <!-- Formulaire d'ajout -->
-        <div class="pt-3 border-t border-[#1e2030] space-y-2">
-            <div class="text-[11px] font-medium text-slate-400">Ajouter un nouveau lien</div>
+        <div class="pt-3 border-t border-[#ded8ce] space-y-2">
+            <div class="text-[11px] font-medium text-[#5e5850]">Ajouter un nouveau lien</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <input type="text" id="newLinkTitle" placeholder="Titre (ex: VIP Uncove 15€, Pack photos...)"
-                    class="w-full px-3 py-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500">
+                    class="w-full px-3 py-2 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] placeholder-slate-600 focus:outline-none focus:border-slate-500">
                 <input type="url" id="newLinkUrl" placeholder="URL (ex: https://uncove.com/...)"
-                    class="w-full px-3 py-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500">
+                    class="w-full px-3 py-2 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] placeholder-slate-600 focus:outline-none focus:border-slate-500">
             </div>
             <button onclick="saveNewPaymentLink()"
-                class="w-full py-2 bg-[#161722] hover:bg-[#202232] border border-[#242738] text-slate-200 text-xs font-medium rounded-lg transition flex items-center justify-center gap-1.5">
+                class="w-full py-2 bg-[#f0ece4] hover:bg-[#e4ded4] border border-[#ded8ce] text-[#2d2b29] text-xs font-medium rounded-lg transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-plus text-[10px]"></i> Enregistrer ce lien
             </button>
         </div>
@@ -317,42 +551,42 @@
 </div>
 
 <!-- Scripts Modal -->
-<div id="scriptsModal" style="display:none;" class="fixed inset-0 bg-black/85 z-40 items-center justify-center p-4">
-    <div class="bg-[#0f1018] border border-[#1e2030] p-6 rounded-2xl w-full max-w-xl shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
-        <div class="flex items-center justify-between pb-2 border-b border-[#1e2030] shrink-0">
+<div id="scriptsModal" style="display:none;" class="fixed inset-0 bg-black/40 z-40 items-center justify-center p-4">
+    <div class="bg-[#ffffff] border border-[#ded8ce] p-6 rounded-2xl w-full max-w-xl shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between pb-2 border-b border-[#ded8ce] shrink-0">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-scroll text-amber-400 text-xs"></i>
-                <span class="text-sm font-medium text-white">Scripts & Modèles de discussion</span>
+                <span class="text-sm font-medium text-[#1f1e1c]">Scripts & Modèles de discussion</span>
             </div>
-            <button onclick="closeScriptsModal()" class="text-slate-500 hover:text-slate-300 text-xs"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeScriptsModal()" class="text-[#7a746c] hover:text-[#3d3a36] text-xs"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <!-- Filtres catégories de scripts -->
         <div id="scriptsCategoryFilters" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 py-1">
             <button onclick="setScriptCategoryFilter('all')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] font-medium bg-white text-black whitespace-nowrap" data-cat="all">Tous</button>
-            <button onclick="setScriptCategoryFilter('Accroche')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="Accroche">Accroche</button>
-            <button onclick="setScriptCategoryFilter('Séduction')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="Séduction">Séduction</button>
-            <button onclick="setScriptCategoryFilter('Vente Uncove')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="Vente Uncove">Vente Uncove</button>
-            <button onclick="setScriptCategoryFilter('Relance')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="Relance">Relance</button>
-            <button onclick="setScriptCategoryFilter('Objection')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="Objection">Objection</button>
+            <button onclick="setScriptCategoryFilter('Accroche')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-[#5e5850] hover:text-[#1f1e1c] whitespace-nowrap" data-cat="Accroche">Accroche</button>
+            <button onclick="setScriptCategoryFilter('Séduction')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-[#5e5850] hover:text-[#1f1e1c] whitespace-nowrap" data-cat="Séduction">Séduction</button>
+            <button onclick="setScriptCategoryFilter('Vente Uncove')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-[#5e5850] hover:text-[#1f1e1c] whitespace-nowrap" data-cat="Vente Uncove">Vente Uncove</button>
+            <button onclick="setScriptCategoryFilter('Relance')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-[#5e5850] hover:text-[#1f1e1c] whitespace-nowrap" data-cat="Relance">Relance</button>
+            <button onclick="setScriptCategoryFilter('Objection')" class="script-filter-btn px-2.5 py-1 rounded text-[10px] text-[#5e5850] hover:text-[#1f1e1c] whitespace-nowrap" data-cat="Objection">Objection</button>
         </div>
 
         <!-- Liste des scripts -->
         <div id="scriptsList" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[160px]">
-            <div class="text-center text-slate-600 text-xs py-4">Chargement des scripts...</div>
+            <div class="text-center text-[#9e988f] text-xs py-4">Chargement des scripts...</div>
         </div>
 
         <!-- Formulaire d'ajout de script -->
-        <div class="pt-3 border-t border-[#1e2030] shrink-0 space-y-2">
+        <div class="pt-3 border-t border-[#ded8ce] shrink-0 space-y-2">
             <div class="flex items-center justify-between">
-                <span class="text-[11px] font-medium text-slate-400">Ajouter un nouveau script</span>
-                <span class="text-[10px] text-slate-600">Variables : {prenom} · {lien}</span>
+                <span class="text-[11px] font-medium text-[#5e5850]">Ajouter un nouveau script</span>
+                <span class="text-[10px] text-[#9e988f]">Variables : {prenom} · {lien}</span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input type="text" id="newScriptTitle" placeholder="Titre du script..."
-                    class="sm:col-span-2 px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500">
+                    class="sm:col-span-2 px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] placeholder-slate-600 focus:outline-none focus:border-slate-500">
                 <select id="newScriptCategory"
-                    class="px-3 py-1.5 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white focus:outline-none focus:border-slate-500">
+                    class="px-3 py-1.5 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] focus:outline-none focus:border-slate-500">
                     <option value="Accroche">Accroche</option>
                     <option value="Séduction">Séduction</option>
                     <option value="Vente Uncove">Vente Uncove</option>
@@ -362,9 +596,9 @@
                 </select>
             </div>
             <textarea id="newScriptContent" rows="2" placeholder="Contenu du script (ex: Coucou {prenom} ! Tu fais quoi de beau ?)"
-                class="w-full px-3 py-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 resize-none focus:outline-none focus:border-slate-500"></textarea>
+                class="w-full px-3 py-2 bg-[#faf9f5] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] placeholder-slate-600 resize-none focus:outline-none focus:border-slate-500"></textarea>
             <button onclick="saveNewScript()"
-                class="w-full py-2 bg-[#161722] hover:bg-[#202232] border border-[#242738] text-slate-200 text-xs font-medium rounded-lg transition flex items-center justify-center gap-1.5">
+                class="w-full py-2 bg-[#f0ece4] hover:bg-[#e4ded4] border border-[#ded8ce] text-[#2d2b29] text-xs font-medium rounded-lg transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-plus text-[10px]"></i> Enregistrer ce script
             </button>
         </div>
@@ -372,39 +606,39 @@
 </div>
 
 <!-- Cloud Vault Média Modal -->
-<div id="vaultModal" style="display:none;" class="fixed inset-0 bg-black/85 z-40 items-center justify-center p-4">
-    <div class="bg-[#0f1018] border border-[#1e2030] p-6 rounded-2xl w-full max-w-4xl shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
-        <div class="flex items-center justify-between pb-2 border-b border-[#1e2030] shrink-0">
+<div id="vaultModal" style="display:none;" class="fixed inset-0 bg-black/40 z-40 items-center justify-center p-4">
+    <div class="bg-[#ffffff] border border-[#ded8ce] p-6 rounded-2xl w-full max-w-4xl shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+        <div class="flex items-center justify-between pb-2 border-b border-[#ded8ce] shrink-0">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-cloud text-sky-400 text-sm"></i>
                 <div>
-                    <span class="text-sm font-semibold text-white">Cloud Vault Média</span>
-                    <span class="text-[11px] text-slate-500 ml-2">Bibliothèque permanente de Miwa</span>
+                    <span class="text-sm font-semibold text-[#1f1e1c]">Cloud Vault Média</span>
+                    <span class="text-[11px] text-[#7a746c] ml-2">Bibliothèque permanente de Miwa</span>
                 </div>
             </div>
             <div class="flex items-center gap-2">
                 <button onclick="toggleVaultUploadBox()" id="toggleUploadBtn" class="px-2.5 py-1.5 rounded-lg bg-white text-black font-medium text-xs hover:bg-slate-200 transition flex items-center gap-1.5">
                     <i class="fa-solid fa-cloud-arrow-up text-[11px]"></i> Importer
                 </button>
-                <button onclick="closeVaultModal()" class="text-slate-500 hover:text-slate-300 text-xs ml-2"><i class="fa-solid fa-xmark text-sm"></i></button>
+                <button onclick="closeVaultModal()" class="text-[#7a746c] hover:text-[#3d3a36] text-xs ml-2"><i class="fa-solid fa-xmark text-sm"></i></button>
             </div>
         </div>
 
         <!-- Section Upload dans le Vault (repliable) -->
-        <div id="vaultUploadBox" class="hidden p-3.5 rounded-xl bg-[#0a0b0f] border border-[#1e2030] space-y-3 shrink-0">
+        <div id="vaultUploadBox" class="hidden p-3.5 rounded-xl bg-[#faf9f5] border border-[#ded8ce] space-y-3 shrink-0">
             <div class="flex items-center justify-between">
-                <span class="text-xs font-medium text-slate-200">Ajouter des médias au Vault</span>
-                <span class="text-[10px] text-slate-500">Photos et vidéos (sélection multiple possible, jusqu'à 100 Mo)</span>
+                <span class="text-xs font-medium text-[#2d2b29]">Ajouter des médias au Vault</span>
+                <span class="text-[10px] text-[#7a746c]">Photos et vidéos (sélection multiple possible, jusqu'à 100 Mo)</span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input type="text" id="vaultItemTitle" placeholder="Titre (ex: Selfie réveil, Vidéo lingerie...)"
-                    class="sm:col-span-2 px-3 py-2 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500">
+                    class="sm:col-span-2 px-3 py-2 bg-[#ffffff] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] placeholder-slate-600 focus:outline-none focus:border-slate-500">
                 <input type="text" id="vaultItemCategory" placeholder="Catégorie (ex: Privé, Selfies, Uncove...)"
-                    class="px-3 py-2 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-slate-500">
+                    class="px-3 py-2 bg-[#ffffff] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] placeholder-slate-600 focus:outline-none focus:border-slate-500">
             </div>
             <div class="flex items-center gap-2">
-                <input type="file" id="vaultFileInput" accept="image/*,video/*" multiple class="text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-[#1e2030] file:text-slate-200 hover:file:bg-[#282b40]">
-                <button onclick="uploadToVault()" id="vaultUploadBtn" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs rounded-lg transition shrink-0 flex items-center gap-1.5">
+                <input type="file" id="vaultFileInput" accept="image/*,video/*" multiple class="text-xs text-[#5e5850] file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-[#1e2030] file:text-[#2d2b29] hover:file:bg-[#282b40]">
+                <button onclick="uploadToVault()" id="vaultUploadBtn" class="px-4 py-2 bg-[#567a92] hover:bg-[#486b82] text-white font-medium text-xs rounded-lg transition shrink-0 flex items-center gap-1.5">
                     <i class="fa-solid fa-upload text-[10px]"></i> Sauvegarder dans le Cloud
                 </button>
             </div>
@@ -414,16 +648,16 @@
         <div class="flex items-center justify-between shrink-0 gap-2">
             <div id="vaultCategoryFilters" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
                 <button onclick="setVaultCategoryFilter('all')" class="vault-filter-btn px-2.5 py-1 rounded text-[10px] font-medium bg-white text-black whitespace-nowrap" data-cat="all">Tous</button>
-                <button onclick="setVaultCategoryFilter('unseen')" class="vault-filter-btn px-2.5 py-1 rounded text-[10px] text-emerald-400 hover:text-white whitespace-nowrap font-medium" data-cat="unseen">✨ Inédits pour ce fan</button>
-                <button onclick="setVaultCategoryFilter('image')" class="vault-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="image">📷 Photos</button>
-                <button onclick="setVaultCategoryFilter('video')" class="vault-filter-btn px-2.5 py-1 rounded text-[10px] text-slate-400 hover:text-white whitespace-nowrap" data-cat="video">🎥 Vidéos</button>
+                <button onclick="setVaultCategoryFilter('unseen')" class="vault-filter-btn px-2.5 py-1 rounded text-[10px] text-emerald-400 hover:text-[#1f1e1c] whitespace-nowrap font-medium" data-cat="unseen">✨ Inédits pour ce fan</button>
+                <button onclick="setVaultCategoryFilter('image')" class="vault-filter-btn px-2.5 py-1 rounded text-[10px] text-[#5e5850] hover:text-[#1f1e1c] whitespace-nowrap" data-cat="image">📷 Photos</button>
+                <button onclick="setVaultCategoryFilter('video')" class="vault-filter-btn px-2.5 py-1 rounded text-[10px] text-[#5e5850] hover:text-[#1f1e1c] whitespace-nowrap" data-cat="video">🎥 Vidéos</button>
             </div>
-            <span id="vaultItemsCount" class="text-[10px] text-slate-500 shrink-0">0 média(s)</span>
+            <span id="vaultItemsCount" class="text-[10px] text-[#7a746c] shrink-0">0 média(s)</span>
         </div>
 
         <!-- Galerie des médias du Vault -->
         <div id="vaultGallery" class="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pr-1 min-h-[220px]">
-            <div class="col-span-full text-center text-slate-600 text-xs py-8">Chargement de la bibliothèque...</div>
+            <div class="col-span-full text-center text-[#9e988f] text-xs py-8">Chargement de la bibliothèque...</div>
         </div>
     </div>
 </div>
@@ -432,160 +666,184 @@
 <div class="flex-1 min-h-0 flex overflow-hidden">
 
     <!-- Sidebar : Répertoire -->
-    <div class="w-96 md:w-[400px] shrink-0 border-r border-[#1a1b23] flex flex-col overflow-hidden">
-        <div class="p-3 border-b border-[#1a1b23] space-y-2">
+    <div id="sidebarPanel" class="w-80 md:w-[320px] shrink-0 border-r border-[#e5e7eb] bg-[#f8f9fa] flex flex-col overflow-hidden">
+        <div class="p-3 pb-0 space-y-2.5">
+            <!-- Search bar & Vault icon -->
             <div class="flex items-center gap-2">
                 <div class="relative flex-1">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-[11px] text-slate-600"></i>
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-[#94a3b8]"></i>
                     <input type="text" id="searchInput" oninput="applyFilters()" placeholder="Rechercher..."
-                        class="w-full pl-8 pr-3 py-2 bg-transparent border border-[#1a1b23] rounded-lg text-xs text-white placeholder-slate-700 focus:outline-none focus:border-slate-700 transition">
+                        class="w-full pl-8 pr-3 py-1.5 bg-[#e9edf0] border-0 rounded-lg text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:ring-1 focus:ring-[#1e293b] transition">
                 </div>
-                <button onclick="openVaultModal()" class="px-2.5 py-2 rounded-lg border border-sky-500/30 bg-sky-500/10 text-[11px] text-sky-300 hover:bg-sky-500/20 transition flex items-center gap-1 shrink-0" title="Cloud Vault Média">
-                    <i class="fa-solid fa-cloud text-[11px]"></i>
+                <button onclick="openVaultModal()" class="w-8 h-8 rounded-lg bg-[#e9edf0] hover:bg-[#dfe4e8] text-[#64748b] transition flex items-center justify-center shrink-0" title="Cloud Vault Média">
+                    <i class="fa-solid fa-cloud text-xs"></i>
                 </button>
-                <button onclick="logout()" class="p-2 text-slate-600 hover:text-slate-300 transition text-xs shrink-0" title="Déconnexion">
+                <button onclick="openSettingsModal()" class="w-8 h-8 rounded-lg bg-[#e9edf0] hover:bg-[#dfe4e8] text-[#64748b] transition flex items-center justify-center shrink-0" title="Paramètres (Mode Sombre / Blanc)">
+                    <i class="fa-solid fa-gear text-xs"></i>
+                </button>
+                <button onclick="logout()" class="p-1.5 text-[#94a3b8] hover:text-[#0f172a] transition text-xs shrink-0" title="Déconnexion">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
                 </button>
             </div>
-            <div id="filterButtonsContainer" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
-                <button onclick="setFilter('all')" class="filter-btn px-2.5 py-1 rounded text-[10px] font-medium whitespace-nowrap bg-white text-black" data-filter="all">Tous</button>
-                <button onclick="setFilter('unread')" class="filter-btn px-2.5 py-1 rounded text-[10px] text-violet-400 hover:text-violet-200 whitespace-nowrap flex items-center gap-1.5" data-filter="unread">
-                    <span>● Non lus</span>
-                    <span id="unreadFilterBadge" class="hidden min-w-[17px] h-4 px-1 rounded-full bg-violet-600 text-white text-[9px] font-bold flex items-center justify-center">0</span>
+            <!-- Onglets Tous (N) / Non Lus (N) style capture -->
+            <div id="filterButtonsContainer" class="flex items-center gap-4 border-b border-[#e5e7eb] px-1">
+                <button onclick="setFilter('all')" id="tabBtnAll" class="filter-tab pb-2 text-xs font-semibold text-[#0f172a] border-b-2 border-[#1e293b] transition whitespace-nowrap" data-filter="all">
+                    Tous <span id="tabCountAll" class="font-normal text-[#64748b]">(0)</span>
                 </button>
-                <button onclick="setFilter('followup')" class="filter-btn px-2.5 py-1 rounded text-[10px] text-amber-400 hover:text-amber-200 whitespace-nowrap flex items-center gap-1.5" data-filter="followup">
-                    <span>⏰ Relances</span>
-                    <span id="followupFilterBadge" class="hidden min-w-[17px] h-4 px-1 rounded-full bg-amber-600 text-white text-[9px] font-bold flex items-center justify-center">0</span>
+                <button onclick="setFilter('unread')" id="tabBtnUnread" class="filter-tab pb-2 text-xs font-medium text-[#64748b] hover:text-[#0f172a] border-b-2 border-transparent transition whitespace-nowrap" data-filter="unread">
+                    Non Lus <span id="tabCountUnread" class="font-normal text-[#64748b]">(0)</span>
                 </button>
-                <div id="dynamicTagFilterButtons" class="flex items-center gap-1.5"></div>
+                <div id="dynamicTagFilterButtons" class="flex items-center gap-2 overflow-x-auto no-scrollbar"></div>
             </div>
         </div>
-        <div id="fansList" class="flex-1 overflow-y-auto py-2">
-            <div class="p-6 text-center text-slate-700 text-xs">Chargement...</div>
+        <div id="fansList" class="flex-1 overflow-y-auto divide-y divide-[#f1f5f9]">
+            <div class="p-6 text-center text-[#9e988f] text-xs">Chargement...</div>
         </div>
     </div>
 
     <!-- Chat area -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div id="chatPanel" class="flex-1 flex flex-col overflow-hidden">
 
         <!-- Chat topbar -->
-        <div class="h-11 px-4 border-b border-[#1a1b23] flex items-center justify-between shrink-0">
-            <div class="flex items-center gap-2.5 min-w-0">
-                <div class="relative shrink-0">
-                    <div id="chatAvatar" class="w-7 h-7 rounded-lg bg-[#1a1b23] flex items-center justify-center font-semibold text-[11px] text-slate-400">?</div>
-                    <span id="chatOnlineDot" class="hidden absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#0a0b0f]" title="En ligne"></span>
+        <div class="h-12 px-3 md:px-6 border-b border-[#e5e7eb] bg-[#f8f9fa] flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2 md:gap-3 min-w-0">
+                <!-- Back button (mobile only) -->
+                <button id="mobileChatBack" onclick="mobileBackToList()" class="hidden shrink-0 w-8 h-8 rounded-lg bg-[#e9edf0] hover:bg-[#dfe4e8] text-[#1e293b] flex items-center justify-center transition" title="Retour">
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
+                </button>
+                <div id="chatAvatarContainer" class="relative shrink-0 hidden">
+                    <div id="chatAvatar" class="w-8 h-8 rounded-full bg-[#1e293b] flex items-center justify-center font-avatar text-white text-sm shadow-xs">?</div>
+                    <span id="chatOnlineDot" class="hidden absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#16a34a] rounded-full border-2 border-white" title="En ligne"></span>
                 </div>
                 <div class="min-w-0">
-                    <div class="flex items-center gap-2">
-                        <span id="chatTitle" class="text-sm font-medium text-white truncate">Sélectionne un fan</span>
-                        <span id="chatBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-medium border shrink-0"></span>
-                        <span id="chatTotalSpentBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-950/60 text-emerald-300 border border-emerald-800/40 shrink-0 ml-1">💰 0 €</span>
-                        <span id="chatFollowupBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-950/60 text-amber-300 border border-amber-800/40 shrink-0 ml-1">⏰ Relance</span>
+                    <div class="flex items-center gap-2.5">
+                        <span id="chatTitle" class="text-base font-semibold text-[#0f172a] truncate">Sélectionne un fan</span>
+                        <span id="chatBadge" onclick="openStatusModal()" class="hidden px-2.5 py-0.5 rounded-full text-[10px] font-medium border shrink-0 cursor-pointer hover:opacity-80 transition" title="Cliquer pour changer l'étiquette"></span>
+                        <span id="chatTotalSpentBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-semibold bg-[#16a34a] text-white border border-[#15803d] shrink-0 ml-1">💰 0 €</span>
+                        <span id="chatFollowupBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-semibold bg-[#d97706] text-white border border-[#b45309] shrink-0 ml-1">⏰ Relance</span>
                     </div>
-                    <div id="chatPresenceText" class="text-[10px] text-slate-500 leading-none mt-0.5"></div>
+                    <div id="chatPresenceText" class="text-[11px] text-[#64748b] leading-none mt-0.5"></div>
                 </div>
             </div>
             <div id="chatHeaderActions" class="hidden flex items-center gap-2 shrink-0">
-                <div id="shiftTrackerBar" class="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#0e1017] border border-[#1e2030] text-[10px] text-slate-400 font-mono">
-                    <span title="Temps de shift actif" class="flex items-center gap-1 text-slate-300"><i class="fa-solid fa-stopwatch text-sky-400"></i> <span id="shiftTimer">00:00</span></span>
-                    <span class="text-slate-700">|</span>
-                    <span title="Messages envoyés cette session" class="flex items-center gap-1 text-slate-300"><i class="fa-solid fa-paper-plane text-violet-400"></i> <span id="shiftMsgCount">0</span> msg</span>
-                    <span class="text-slate-700">|</span>
-                    <span title="Liens envoyés cette session" class="flex items-center gap-1 text-slate-300"><i class="fa-solid fa-link text-emerald-400"></i> <span id="shiftLinkCount">0</span> liens</span>
+                <div id="shiftTrackerBar" class="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#f0ece4] border border-[#ded8ce] text-[10px] text-[#5e5850] font-mono">
+                    <span title="Temps de shift actif" class="flex items-center gap-1 text-[#3d3a36]"><i class="fa-solid fa-stopwatch text-sky-400"></i> <span id="shiftTimer">00:00</span></span>
+                    <span class="text-[#9e988f]">|</span>
+                    <span title="Messages envoyés cette session" class="flex items-center gap-1 text-[#3d3a36]"><i class="fa-solid fa-paper-plane text-violet-400"></i> <span id="shiftMsgCount">0</span> msg</span>
+                    <span class="text-[#9e988f]">|</span>
+                    <span title="Liens envoyés cette session" class="flex items-center gap-1 text-[#3d3a36]"><i class="fa-solid fa-link text-emerald-400"></i> <span id="shiftLinkCount">0</span> liens</span>
                 </div>
-                <button onclick="markAsRead()" id="markReadBtn" class="hidden px-2.5 py-1.5 rounded-lg border border-violet-500/40 bg-violet-600/20 text-[11px] text-violet-300 hover:bg-violet-600/30 transition flex items-center gap-1.5" title="Marquer comme lu">
+                <button onclick="markAsRead()" id="markReadBtn" class="hidden px-2.5 py-1.5 rounded-lg border border-[#ded8ce] bg-[#f0ece4] text-[11px] text-[#5e5850] hover:bg-[#e4ded4] hover:text-[#1f1e1c] transition flex items-center gap-1.5" title="Marquer comme lu">
                     <i class="fa-solid fa-check-double text-[10px]"></i> Lu
                 </button>
-                <button onclick="openStatusModal()" class="px-2.5 py-1.5 rounded-lg border border-[#1e2030] text-[11px] text-slate-400 hover:text-slate-200 hover:border-slate-700 transition flex items-center gap-1.5">
+                <button onclick="openStatusModal()" class="px-2.5 py-1.5 rounded-lg border border-[#e5e7eb] bg-[#e9edf0] hover:bg-[#dfe4e8] text-[11px] font-medium text-[#1e293b] transition flex items-center gap-1.5 cursor-pointer" title="Modifier l'étiquette">
                     <i class="fa-solid fa-tag text-[10px]"></i> Étiquette
                 </button>
-                <button onclick="openProfileModal()" class="px-2.5 py-1.5 rounded-lg border border-[#1e2030] text-[11px] text-slate-400 hover:text-slate-200 hover:border-slate-700 transition flex items-center gap-1.5">
+                <button onclick="openProfileModal()" class="px-2.5 py-1.5 rounded-lg border border-[#ded8ce] bg-[#f0ece4] text-[11px] text-[#5e5850] hover:bg-[#e4ded4] hover:text-[#1f1e1c] transition flex items-center gap-1.5">
                     <i class="fa-solid fa-user text-[10px]"></i> Fiche CRM
                 </button>
             </div>
         </div>
 
         <!-- Messages -->
-        <div id="chatMessages" class="flex-1 px-4 py-3 overflow-y-auto space-y-2">
-            <div class="h-full flex flex-col items-center justify-center text-slate-700 text-xs space-y-2">
-                <i class="fa-regular fa-comment text-2xl"></i>
-                <span>Aucune conversation sélectionnée</span>
+        <div id="chatMessages" class="flex-1 px-8 py-8 overflow-y-auto space-y-3 bg-[#f8f9fa]">
+            <div class="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-5 select-none">
+                <!-- Bulle minimaliste fine style capture -->
+                <div class="w-12 h-12 flex items-center justify-center text-[#1e293b]">
+                    <svg class="w-10 h-10 stroke-current fill-none stroke-[1.5]" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.502 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                    </svg>
+                </div>
+                <div class="space-y-2">
+                    <h2 class="text-2xl font-bold font-serif-title text-[#0f172a] tracking-tight">Espace de Discussion Miwa</h2>
+                    <p class="text-xs text-[#64748b] leading-relaxed max-w-sm">Sélectionne un fan dans le répertoire à gauche pour répondre ou programmer une relance.</p>
+                </div>
+                <!-- 2 Cartes style capture exacte -->
+                <div class="grid grid-cols-2 gap-3 w-full pt-2">
+                    <div onclick="openScriptsModal()" class="p-3.5 rounded-xl bg-white border border-[#e2e8f0] shadow-xs hover:border-[#cbd5e1] hover:shadow-sm transition cursor-pointer text-left">
+                        <div class="text-xs font-semibold text-[#0f172a] flex items-center gap-1.5 mb-1">
+                            <i class="fa-regular fa-paper-plane text-[11px] text-[#64748b]"></i> Raccourcis
+                        </div>
+                        <div class="text-[11px] text-[#64748b] leading-snug">Crée des raccourcis pour vos réponses fréquentes</div>
+                    </div>
+                    <div onclick="suggestReply()" class="p-3.5 rounded-xl bg-white border border-[#e2e8f0] shadow-xs hover:border-[#cbd5e1] hover:shadow-sm transition cursor-pointer text-left">
+                        <div class="text-xs font-semibold text-[#0f172a] flex items-center gap-1.5 mb-1">
+                            <i class="fa-regular fa-circle-question text-[11px] text-[#64748b]"></i> Suggérer une réponse
+                        </div>
+                        <div class="text-[11px] text-[#64748b] leading-snug">Générez une réponse personnalisée avec l'IA</div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Send box -->
-        <div id="sendMessageBox" class="hidden border-t border-[#1a1b23] p-3 shrink-0 space-y-2">
+        <div id="sendMessageBox" class="hidden border-t border-[#ded8ce] bg-[#f2eee7] p-3 shrink-0 space-y-2">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 flex-wrap">
                     <button onclick="suggestReply()" id="suggestBtn"
-                        class="px-2.5 py-1 rounded border border-[#1e2030] text-[10px] text-slate-400 hover:text-slate-200 hover:border-slate-700 transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-wand-magic-sparkles text-[9px] text-amber-400"></i>
+                        class="px-3 py-1.5 rounded-lg bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium text-xs transition flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer">
+                        <i class="fa-solid fa-wand-magic-sparkles text-[11px] text-sky-300"></i>
                         Suggérer
                     </button>
                     <button onclick="openScriptsModal()" id="scriptsBtn"
-                        class="px-2.5 py-1 rounded border border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-300 hover:bg-amber-500/20 transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-scroll text-[9px]"></i>
+                        class="px-3 py-1.5 rounded-lg bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium text-xs transition flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer">
+                        <i class="fa-solid fa-scroll text-[11px] text-slate-300"></i>
                         Scripts
                     </button>
                     <button onclick="openVaultModal()" id="chatVaultBtn"
-                        class="px-2.5 py-1 rounded border border-sky-500/30 bg-sky-500/10 text-[10px] text-sky-300 hover:bg-sky-500/20 transition flex items-center gap-1.5" title="Insérer un média du Cloud Vault">
-                        <i class="fa-solid fa-cloud text-[9px]"></i>
+                        class="px-3 py-1.5 rounded-lg bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium text-xs transition flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer" title="Insérer un média du Cloud Vault">
+                        <i class="fa-solid fa-cloud text-[11px] text-sky-300"></i>
                         Vault
                     </button>
                     <button onclick="openPaymentLinksModal()" id="paymentLinksBtn"
-                        class="px-2.5 py-1 rounded border border-[#1e2030] text-[10px] text-slate-400 hover:text-slate-200 hover:border-slate-700 transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-link text-[9px] text-violet-400"></i>
+                        class="px-3 py-1.5 rounded-lg bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium text-xs transition flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer">
+                        <i class="fa-solid fa-link text-[11px] text-slate-300"></i>
                         Lien vente
                     </button>
-                    <button onclick="openRatesRulesModal()" id="ratesRulesBtn"
-                        class="px-2.5 py-1 rounded border border-emerald-500/30 bg-emerald-500/10 text-[10px] text-emerald-300 hover:bg-emerald-500/20 transition flex items-center gap-1.5" title="Tarifs officiels et règles de discussion">
-                        <i class="fa-solid fa-tags text-[9px]"></i>
-                        Tarifs & Règles
-                    </button>
-                    <label class="px-2.5 py-1 rounded border border-[#1e2030] text-[10px] text-slate-400 hover:text-slate-200 hover:border-slate-700 transition flex items-center gap-1.5 cursor-pointer" title="Envoyer une photo / vidéo">
-                        <i class="fa-solid fa-paperclip text-[10px] text-violet-400"></i>
+                    <label class="px-3 py-1.5 rounded-lg bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium text-xs transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95" title="Envoyer une photo / vidéo">
+                        <i class="fa-solid fa-paperclip text-[11px] text-slate-300"></i>
                         Média local
                         <input type="file" id="mediaFileInput" accept="image/*,video/*" class="hidden" onchange="handleMediaSelect(event)">
                     </label>
                 </div>
-                <span class="text-[10px] text-slate-700 hidden sm:inline">↵ Envoyer</span>
+                <span class="text-[10px] text-[#9e988f] hidden sm:inline">↵ Envoyer</span>
             </div>
 
             <!-- Emoji Quick Bar -->
-            <div class="flex items-center justify-between gap-1 px-2 py-1 bg-[#090a10] rounded-xl border border-[#181924]">
+            <div class="flex items-center justify-between gap-1 px-2 py-1 bg-[#ffffff] rounded-xl border border-[#ded8ce]">
                 <div id="quickEmojiBar" class="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 py-0.5">
                     <!-- Emojis générés dynamiquement -->
                 </div>
-                <button type="button" onclick="openEmojiSettingsModal()" class="w-6 h-6 rounded-lg text-slate-500 hover:text-violet-300 hover:bg-[#161826] flex items-center justify-center transition shrink-0 ml-1 cursor-pointer" title="Personnaliser les emojis">
+                <button type="button" onclick="openEmojiSettingsModal()" class="w-6 h-6 rounded-lg text-[#8e8880] hover:text-[#1f1e1c] hover:bg-[#f2eee7] flex items-center justify-center transition shrink-0 ml-1 cursor-pointer" title="Personnaliser les emojis">
                     <i class="fa-solid fa-gear text-[11px]"></i>
                 </button>
             </div>
             <!-- Media preview container -->
-            <div id="mediaPreviewBox" class="hidden p-2 bg-[#0a0b0f] rounded-lg border border-[#1e2030] flex items-center justify-between">
+            <div id="mediaPreviewBox" class="hidden p-2 bg-[#faf9f5] rounded-lg border border-[#ded8ce] flex items-center justify-between">
                 <div class="flex items-center gap-2.5 min-w-0">
-                    <img id="mediaPreviewThumb" src="" class="w-10 h-10 object-cover rounded-md border border-[#242738]">
-                    <span id="mediaPreviewName" class="text-xs text-slate-300 truncate max-w-xs"></span>
+                    <img id="mediaPreviewThumb" src="" class="w-10 h-10 object-cover rounded-md border border-[#ded8ce]">
+                    <span id="mediaPreviewName" class="text-xs text-[#3d3a36] truncate max-w-xs"></span>
                 </div>
-                <button type="button" onclick="cancelMediaSelection()" class="p-1 text-slate-500 hover:text-red-400 transition" title="Supprimer la photo">
+                <button type="button" onclick="cancelMediaSelection()" class="p-1 text-[#7a746c] hover:text-red-400 transition" title="Supprimer la photo">
                     <i class="fa-solid fa-xmark text-xs"></i>
                 </button>
             </div>
             <div class="relative flex items-end gap-2">
                 <!-- Slash Commands Popover -->
-                <div id="slashMenu" class="hidden absolute bottom-full mb-1.5 left-0 right-20 bg-[#0d0e14] border border-[#242738] rounded-xl shadow-2xl overflow-hidden z-30 max-h-60 flex flex-col">
-                    <div class="px-3 py-1.5 border-b border-[#1b1d28] flex items-center justify-between text-[10px] text-slate-400 shrink-0 bg-[#08090f]">
+                <div id="slashMenu" class="hidden absolute bottom-full mb-1.5 left-0 right-20 bg-[#ffffff] border border-[#ded8ce] rounded-xl shadow-2xl overflow-hidden z-30 max-h-60 flex flex-col">
+                    <div class="px-3 py-1.5 border-b border-[#ded8ce] flex items-center justify-between text-[10px] text-[#5e5850] shrink-0 bg-[#f2eee7]">
                         <span class="font-medium flex items-center gap-1"><i class="fa-solid fa-bolt text-amber-400"></i> Commandes rapides (Scripts, Liens, Tarifs)</span>
-                        <span class="text-slate-600">↑↓ naviguer, Entrée insérer</span>
+                        <span class="text-[#9e988f]">↑↓ naviguer, Entrée insérer</span>
                     </div>
                     <div id="slashMenuList" class="p-1 space-y-0.5 overflow-y-auto max-h-48"></div>
                 </div>
 
                 <textarea id="messageInput" rows="2" placeholder="Écrire en tant que Miwa... (tapez / pour les commandes)"
-                    class="flex-1 px-3 py-2 bg-[#0f1018] border border-[#1e2030] rounded-lg text-xs text-slate-100 placeholder-slate-700 resize-none focus:outline-none focus:border-slate-600 transition"
+                    class="flex-1 px-3 py-2 bg-[#ffffff] border border-[#ded8ce] rounded-lg text-xs text-[#1f1e1c] placeholder-[#9e988f] resize-none focus:outline-none focus:border-[#a67070] transition"
                     onkeydown="handleKeydown(event)" oninput="handleMessageInput()"></textarea>
                 <button onclick="sendMessage()" id="sendBtn"
-                    class="px-3.5 py-2 bg-white text-black text-xs font-medium rounded-lg hover:bg-slate-100 transition flex items-center gap-1.5 shrink-0 h-[52px]">
-                    <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                    class="px-4 py-2 bg-[#1e293b] hover:bg-[#0f172a] text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shrink-0 h-[52px] shadow-xs cursor-pointer">
+                    <i class="fa-solid fa-paper-plane text-xs"></i>
                     <span>Envoyer</span>
                 </button>
             </div>
@@ -695,7 +953,7 @@ let lastRenderedChatHash = "";
 
 function startRefresh(){
     if(refreshInterval) clearInterval(refreshInterval);
-    refreshInterval = setInterval(refreshData, 1000);
+    refreshInterval = setInterval(refreshData, 800);
 }
 
 let currentTags = [];
@@ -705,8 +963,8 @@ function renderTagFilterButtons(tags){
     if(!container) return;
     container.innerHTML = (tags || []).map(function(t){
         var isActive = activeFilter === t.id;
-        var activeCls = isActive ? "bg-white text-black font-semibold shadow-sm" : "text-slate-500 hover:text-slate-200";
-        return '<button onclick="setFilter(\'' + t.id + '\')" class="filter-btn px-2.5 py-1 rounded text-[10px] font-medium whitespace-nowrap transition-all ' + activeCls + '" data-filter="' + t.id + '">' +
+        var activeCls = isActive ? "bg-[#2563eb] text-white font-semibold shadow-xs" : "bg-[#e4ded4] text-[#5e5850] hover:bg-[#d8d2c6]";
+        return '<button onclick="setFilter(\'' + t.id + '\')" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ' + activeCls + '" data-filter="' + t.id + '">' +
             t.label +
         '</button>';
     }).join("");
@@ -714,20 +972,24 @@ function renderTagFilterButtons(tags){
 
 function setFilter(f){
     activeFilter = f;
-    document.querySelectorAll(".filter-btn").forEach(function(b){
-        var isActive = b.dataset.filter === f;
-        if(isActive){
-            b.classList.add("bg-white","text-black");
-            b.classList.remove("text-slate-600", "text-slate-500", "text-violet-400");
-        } else {
-            b.classList.remove("bg-white","text-black");
-            if(b.dataset.filter === "unread"){
-                b.classList.add("text-violet-400");
-            } else {
-                b.classList.add("text-slate-500");
-            }
-        }
-    });
+    var btnAll = document.getElementById("tabBtnAll");
+    var btnUnread = document.getElementById("tabBtnUnread");
+    if(btnAll){
+        btnAll.classList.toggle("text-[#0f172a]", f === "all");
+        btnAll.classList.toggle("font-semibold", f === "all");
+        btnAll.classList.toggle("border-[#1e293b]", f === "all");
+        btnAll.classList.toggle("text-[#64748b]", f !== "all");
+        btnAll.classList.toggle("font-medium", f !== "all");
+        btnAll.classList.toggle("border-transparent", f !== "all");
+    }
+    if(btnUnread){
+        btnUnread.classList.toggle("text-[#0f172a]", f === "unread");
+        btnUnread.classList.toggle("font-semibold", f === "unread");
+        btnUnread.classList.toggle("border-[#1e293b]", f === "unread");
+        btnUnread.classList.toggle("text-[#64748b]", f !== "unread");
+        btnUnread.classList.toggle("font-medium", f !== "unread");
+        btnUnread.classList.toggle("border-transparent", f !== "unread");
+    }
     applyFilters();
 }
 
@@ -750,7 +1012,7 @@ async function refreshData(){
         updateKPIs(d.stats || {});
         checkForNewMessages(fansData);
         applyFilters();
-        if(!activeUserId){
+        if(!activeUserId && !isMobile()){
             var saved = sessionStorage.getItem("miwa_active_fan");
             if(saved && fansData.some(function(f){ return f.user_id === saved; })){
                 activeUserId = saved;
@@ -811,66 +1073,84 @@ function applyFilters(){
     renderList(f);
 }
 
+function getFanAvatarInitials(name){
+    if(!name) return "M";
+    var clean = name.replace(/^@/, "").trim();
+    if(!clean) return "M";
+    var parts = clean.split(/[\s._-]+/).filter(Boolean);
+    if(parts.length >= 2){
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return clean.length >= 2 ? (clean[0].toUpperCase() + clean[1].toLowerCase()) : clean[0].toUpperCase();
+}
+
 function renderList(fans){
     var c = document.getElementById("fansList");
     if(!fans.length){
-        c.innerHTML = '<div class="p-6 text-center text-slate-700 text-xs">Aucun fan dans cette vue.</div>';
+        c.innerHTML = '<div class="p-6 text-center text-[#94a3b8] text-xs">Aucun fan dans cette vue.</div>';
         return;
     }
+
+    // Mettre à jour les compteurs dans les onglets Tous (N) et Non Lus (N)
+    var totalCount = fansData.length;
+    var unreadCount = fansData.filter(function(x){ return x.is_unread; }).length;
+    var elAll = document.getElementById("tabCountAll");
+    var elUnread = document.getElementById("tabCountUnread");
+    if(elAll) elAll.innerText = "(" + totalCount + ")";
+    if(elUnread) elUnread.innerText = "(" + unreadCount + ")";
+
     c.innerHTML = fans.map(function(f){
         var sel = f.user_id === activeUserId;
-        var ini = f.name ? f.name.substring(0, 2).toUpperCase() : "??";
+        var ini = getFanAvatarInitials(f.name);
         var isMan = f.is_manual ? ' <span class="opacity-30 text-[8px]">●</span>' : '';
         var timeStr = formatTime(f.last_message_time);
 
-        var cardBg = sel
-            ? "bg-[#0c182b] border-2 border-sky-400/70 shadow-lg shadow-sky-950/40"
-            : (f.is_unread
-                ? "bg-[#10111f] border border-violet-500/20 shadow-md hover:bg-[#14162a] hover:border-violet-500/30"
-                : "bg-[#0c0d16] border border-[#181928]/70 hover:bg-[#111220] hover:border-[#242640]/80");
+        // Ligne de carte épurée style capture : fond très propre, pas de grosses boîtes
+        var itemBg = sel
+            ? "bg-[#edf2f7] active-fan"
+            : (f.is_unread ? "bg-white hover:bg-[#f8fafc]" : "bg-transparent hover:bg-[#f1f5f9]");
 
-        var avatarRing = sel
-            ? "ring-2 ring-sky-400 shadow-sm shadow-sky-400/40"
-            : (f.is_unread ? "ring-2 ring-violet-400/40" : "ring-1 ring-[#242738]/60");
-
-        var avatarGrad = sel
-            ? "from-sky-900/80 to-[#0e192c] text-sky-200"
-            : (f.is_unread ? "from-violet-900/70 to-[#1a1b2e] text-slate-300" : "from-[#181923] to-[#0e0f17] text-slate-300");
-
-        var unreadBubble = f.is_unread
-            ? '<span class="min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-violet-600 text-white flex items-center justify-center shadow-md shrink-0">!</span>'
+        // Un point bleu nuit/marine à droite quand non lu (exactement comme sur la capture)
+        var unreadDot = f.is_unread
+            ? '<span class="w-2 h-2 rounded-full bg-[#1e3a8a] shrink-0" title="Non lu"></span>'
             : '';
 
         var lastMsgPreview = f.last_message
             ? f.last_message.replace(/</g, "&lt;").replace(/>/g, "&gt;")
-            : '<span class="text-slate-600 italic">Aucun message</span>';
+            : '<span class="text-[#cbd5e1] italic">Aucun message</span>';
         if(f.is_typing){
-            lastMsgPreview = '<span class="text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-ellipsis fa-fade text-[10px]"></i> écrit...</span>';
+            lastMsgPreview = '<span class="text-[#16a34a] flex items-center gap-1 font-medium"><i class="fa-solid fa-ellipsis fa-fade text-[10px]"></i> écrit...</span>';
         }
 
-        var statusPill = '<button type="button" onclick="event.stopPropagation(); openStatusModal(\'' + f.user_id + '\')" title="Cliquer pour changer l\'étiquette" class="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full border ' + f.badge_style + ' hover:brightness-125 transition-all cursor-pointer active:scale-95">' + f.status_label + isMan + '</button>';
+        var statusPill = f.status_label
+            ? '<button type="button" onclick="event.stopPropagation(); openStatusModal(\'' + f.user_id + '\');" class="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border ' + f.badge_style + ' hover:opacity-80 hover:scale-105 transition cursor-pointer" title="Cliquer pour changer l\'étiquette">' + f.status_label + isMan + '</button>'
+            : '<button type="button" onclick="event.stopPropagation(); openStatusModal(\'' + f.user_id + '\');" class="opacity-0 hover:opacity-100 shrink-0 text-[10px] text-[#94a3b8] hover:text-[#1e293b] px-1.5 py-0.5 rounded border border-dashed border-[#cbd5e1] transition cursor-pointer" title="Ajouter une étiquette">+ Tag</button>';
 
-        var nameColor = sel ? 'text-sky-200 font-bold' : (f.is_unread ? 'text-white font-semibold' : 'text-slate-300');
-        var msgColor = sel ? 'text-sky-200/70' : (f.is_unread ? 'text-slate-200 font-medium' : 'text-slate-500');
+        var nameColor = sel
+            ? 'text-[#1e3a8a] font-bold'
+            : (f.is_unread ? 'text-[#0f172a] font-bold' : 'text-[#1e293b] font-semibold');
 
-        return '<div onclick="selectFan(\'' + f.user_id + '\')" class="fan-card mx-2.5 mb-1.5 px-3 py-2.5 rounded-2xl cursor-pointer transition-all duration-150 ' + cardBg + '">' +
+        var msgColor = sel
+            ? 'text-[#475569]'
+            : (f.is_unread ? 'text-[#334155] font-medium' : 'text-[#64748b]');
+
+        // Avatar unifié : MÊME couleur bleu nuit élégant pour tous, typographie fine calligraphique
+        return '<div onclick="selectFan(\'' + f.user_id + '\')" oncontextmenu="openFanContextMenu(event, \'' + f.user_id + '\')" class="fan-item px-3.5 py-3 cursor-pointer ' + itemBg + '">' +
             '<div class="flex items-center gap-3">' +
                 '<div class="relative shrink-0">' +
-                    '<div class="w-10 h-10 rounded-full ' + avatarRing + ' bg-gradient-to-br ' + avatarGrad + ' flex items-center justify-center font-bold text-sm transition-all">' +
+                    '<div class="w-10 h-10 rounded-full bg-[#1e293b] flex items-center justify-center text-white font-avatar text-[15px] font-normal shadow-xs border border-white/20 select-none">' +
                         ini +
                     '</div>' +
-                    (f.is_online ? '<span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0a0b10] shadow-sm"></span>' : '') +
+                    (f.is_online ? '<span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#16a34a] border-2 border-white" title="En ligne"></span>' : '') +
                 '</div>' +
                 '<div class="flex-1 min-w-0">' +
                     '<div class="flex items-center justify-between gap-1 mb-0.5">' +
-                        '<span class="text-[13px] truncate ' + nameColor + '">' + f.name + '</span>' +
-                        '<div class="flex items-center gap-1.5 shrink-0">' +
-                            (timeStr ? '<span class="text-[10px] text-slate-500 font-mono">' + timeStr + '</span>' : '') +
-                            unreadBubble +
-                        '</div>' +
+                        '<span class="text-[13.5px] leading-tight truncate ' + nameColor + '">' + f.name + '</span>' +
+                        '<span class="text-[11px] text-[#94a3b8] font-mono shrink-0">' + timeStr + '</span>' +
                     '</div>' +
-                    '<div class="flex items-center justify-between gap-1">' +
-                        '<div class="text-[11px] truncate flex-1 ' + msgColor + '">' + lastMsgPreview + '</div>' +
+                    '<div class="flex items-center justify-between gap-2">' +
+                        '<div class="text-[12px] leading-snug truncate flex-1 ' + msgColor + '">' + lastMsgPreview + '</div>' +
+                        unreadDot +
                         statusPill +
                     '</div>' +
                 '</div>' +
@@ -880,6 +1160,7 @@ function renderList(fans){
 }
 
 function selectFan(uid){
+    mobileShowChat(); // Afficher le panneau de discussion sur mobile
     activeUserId = uid;
     sessionStorage.setItem("miwa_active_fan", uid);
     // Marquer comme lu immédiatement si non lu (mise à jour UI instantanée)
@@ -948,12 +1229,22 @@ async function loadChat(uid, scroll){
     if(!fan) return;
 
     document.getElementById("chatTitle").innerText = fan.name;
-    document.getElementById("chatAvatar").innerText = fan.name.substring(0, 2).toUpperCase();
+    var avEl = document.getElementById("chatAvatar");
+    var avBox = document.getElementById("chatAvatarContainer");
+    if(avEl){
+        avEl.innerText = getFanAvatarInitials(fan.name);
+        avEl.className = "w-8 h-8 rounded-full bg-[#1e293b] flex items-center justify-center font-avatar text-white text-sm shadow-xs";
+    }
+    if(avBox) avBox.classList.remove("hidden");
 
     var badge = document.getElementById("chatBadge");
-    badge.className = "px-2 py-0.5 rounded text-[10px] font-medium border ml-1 " + fan.badge_style;
-    badge.innerText = fan.status_label;
-    badge.classList.remove("hidden");
+    if(fan.status_label){
+        badge.className = "px-2 py-0.5 rounded text-[10px] font-medium border ml-1 " + fan.badge_style;
+        badge.innerText = fan.status_label;
+        badge.classList.remove("hidden");
+    } else {
+        badge.classList.add("hidden");
+    }
 
     var onlineDot = document.getElementById("chatOnlineDot");
     if(onlineDot) onlineDot.classList.toggle("hidden", !fan.is_online);
@@ -961,11 +1252,11 @@ async function loadChat(uid, scroll){
     var pres = document.getElementById("chatPresenceText");
     if(pres){
         if(fan.is_typing){
-            pres.innerHTML = '<span class="text-emerald-400 animate-pulse font-medium flex items-center gap-1"><i class="fa-solid fa-pen text-[9px]"></i> est en train d\'écrire...</span>';
+            pres.innerHTML = '<span class="text-[#16a34a] animate-pulse font-semibold flex items-center gap-1"><i class="fa-solid fa-pen text-[9px]"></i> est en train d\'écrire...</span>';
         } else if(fan.is_online){
-            pres.innerHTML = '<span class="text-emerald-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>En ligne</span>';
+            pres.innerHTML = '<span class="text-[#16a34a] flex items-center gap-1 font-medium"><span class="w-1.5 h-1.5 rounded-full bg-[#16a34a] animate-pulse"></span>En ligne</span>';
         } else {
-            pres.innerHTML = '<span class="text-slate-600">Hors ligne</span>';
+            pres.innerHTML = '<span class="text-[#9e988f]">Hors ligne</span>';
         }
     }
 
@@ -1021,7 +1312,7 @@ async function loadChat(uid, scroll){
 
         var msgs = document.getElementById("chatMessages");
         if(!d.history || !d.history.length){
-            msgs.innerHTML = '<div class="h-full flex items-center justify-center text-slate-700 text-xs">Aucun message.</div>';
+            msgs.innerHTML = '<div class="h-full flex items-center justify-center text-[#9e988f] text-xs">Aucun message.</div>';
             return;
         }
 
@@ -1035,13 +1326,13 @@ async function loadChat(uid, scroll){
                 var isVideo = m.photo_url.endsWith(".mp4") || m.photo_url.endsWith(".mov") || m.photo_url.endsWith(".webm");
                 if(isVideo){
                     photoHtml = '<div class="my-2">' +
-                        '<video controls src="' + m.photo_url + '" onloadedmetadata="onChatMediaLoaded()" class="rounded-lg max-w-[280px] max-h-60 border border-[#242738] shadow-md"></video>' +
+                        '<video controls src="' + m.photo_url + '" onloadedmetadata="onChatMediaLoaded()" class="rounded-xl max-w-[300px] max-h-64 border border-[#e2ded5] shadow-sm"></video>' +
                     '</div>';
                 } else {
                     photoHtml = '<div class="my-2">' +
-                        '<a href="' + m.photo_url + '" target="_blank" class="inline-block group relative">' +
-                            '<img src="' + m.photo_url + '" onload="onChatMediaLoaded()" class="rounded-lg max-w-[280px] max-h-64 object-cover border border-[#242738] hover:opacity-95 transition shadow-md cursor-pointer" alt="Média">' +
-                            '<div class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] text-white flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">' +
+                        '<a href="' + m.photo_url + '" target="_blank" class="inline-block group relative rounded-xl overflow-hidden shadow-sm border border-[#e2ded5]">' +
+                            '<img src="' + m.photo_url + '" onload="onChatMediaLoaded()" class="rounded-xl max-w-[300px] max-h-72 object-cover hover:scale-[1.02] transition-transform duration-200 cursor-pointer" alt="Média">' +
+                            '<div class="absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-xs text-[10px] text-white flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">' +
                                 '<i class="fa-solid fa-magnifying-glass-plus"></i> Agrandir' +
                             '</div>' +
                         '</a>' +
@@ -1052,43 +1343,46 @@ async function loadChat(uid, scroll){
             var subContent = "";
             if(!isMiwa && m.original_content && m.original_content !== m.content){
                 var origEsc = m.original_content.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                subContent = '<div class="mt-1.5 pt-1.5 border-t border-[#1a1b23]">' +
-                    '<button onclick="toggleOriginal(this)" class="text-[9px] text-slate-500 hover:text-slate-300 flex items-center gap-1 transition">' +
-                        '<i class="fa-solid fa-language text-[10px]"></i> Voir original' +
+                subContent = '<div class="mt-1.5 pt-1.5 border-t border-[#ded8ce]">' +
+                    '<button onclick="toggleOriginal(this)" class="text-[10px] text-[#2563eb] hover:underline flex items-center gap-1 font-medium transition">' +
+                        '<i class="fa-solid fa-language text-[11px]"></i> Voir message original' +
                     '</button>' +
-                    '<div class="hidden text-[10px] text-slate-400 italic mt-1 whitespace-pre-wrap bg-[#08090d] p-1.5 rounded border border-[#16171f]">' +
+                    '<div class="hidden text-[11px] text-[#475569] italic mt-1 whitespace-pre-wrap bg-[#f8f7f4] p-2 rounded-lg border border-[#e2ded5]">' +
                         origEsc +
                     '</div>' +
                 '</div>';
             } else if(isMiwa && m.sent_content && m.sent_content !== m.content){
                 var sentEsc = m.sent_content.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                subContent = '<div class="mt-1.5 pt-1.5 border-t border-[#1e2030] text-[10px] text-slate-400 italic">' +
-                    '<span class="text-slate-500">Envoyé traduit :</span> ' + sentEsc +
+                subContent = '<div class="mt-1.5 pt-1.5 border-t border-[#e2ded5] text-[11px] text-[#64748b] italic">' +
+                    '<span class="font-semibold text-[#475569]">Envoyé traduit :</span> ' + sentEsc +
                 '</div>';
             }
 
             var footer = "";
             if(isMiwa){
                 var check = m.read
-                    ? '<span class="text-violet-400 font-bold ml-1" title="Lu">✓✓</span>'
-                    : '<span class="text-slate-500 font-bold ml-1" title="Envoyé">✓</span>';
-                footer = '<div class="flex items-center justify-end gap-1 text-[9px] text-slate-500 mt-1 font-mono">' +
+                    ? '<span class="text-[#2563eb] font-bold ml-1" title="Lu">✓✓</span>'
+                    : '<span class="text-[#94a3b8] font-bold ml-1" title="Envoyé">✓</span>';
+                footer = '<div class="flex items-center justify-end gap-1 text-[10px] text-[#94a3b8] mt-1 font-mono font-medium">' +
                     '<span>' + timeStr + '</span>' + check +
                 '</div>';
             } else {
-                footer = timeStr ? '<div class="text-[9px] text-slate-600 text-right mt-1 font-mono">' + timeStr + '</div>' : '';
+                footer = timeStr ? '<div class="text-[10px] text-[#94a3b8] text-right mt-1 font-mono font-medium">' + timeStr + '</div>' : '';
             }
 
-            return '<div class="flex ' + (isMiwa ? 'justify-end' : 'justify-start') + '">' +
-                '<div class="max-w-[75%] rounded-xl px-3.5 py-2.5 text-xs leading-relaxed ' +
-                    (isMiwa
-                        ? 'bg-[#131420] border border-[#1e2030] text-slate-200 rounded-tr-none'
-                        : 'bg-[#0d0e14] border border-[#16171f] text-slate-400 rounded-tl-none') + '">' +
-                    '<div class="text-[10px] font-medium mb-1 ' + (isMiwa ? 'text-slate-600' : 'text-slate-700') + '">' +
-                        (isMiwa ? 'Miwa' : fan.name) +
-                    '</div>' +
+            var bubbleStyle = isMiwa
+                ? 'bg-[#f3ede2] border border-[#e2d9cb] text-[#1e293b] chat-bubble-sent shadow-sm'
+                : 'bg-[#ffffff] border border-[#e2ded5] text-[#1e293b] chat-bubble-received shadow-sm';
+
+            var senderHeader = isMiwa
+                ? '<div class="text-[11px] font-bold text-[#1e293b] dark:text-[#cbd5e1] mb-1 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-[#1e293b] dark:bg-slate-400"></span>Miwa</div>'
+                : '<div class="text-[11px] font-bold text-[#1e293b] dark:text-[#f8fafc] mb-1 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-[#1e293b] dark:bg-sky-400"></span>' + fan.name + '</div>';
+
+            return '<div class="flex ' + (isMiwa ? 'justify-end' : 'justify-start') + ' animate-fadeIn">' +
+                '<div class="max-w-[76%] px-4 py-2.5 ' + bubbleStyle + '">' +
+                    senderHeader +
                     photoHtml +
-                    (cnt ? '<div class="whitespace-pre-wrap leading-relaxed">' + cnt + '</div>' : '') +
+                    (cnt ? '<div class="whitespace-pre-wrap text-[13.5px] leading-relaxed">' + cnt + '</div>' : '') +
                     subContent +
                     footer +
                 '</div>' +
@@ -1105,16 +1399,16 @@ let editingStatusUserId = null;
 let selectedTagColor = "violet";
 
 const AVAILABLE_COLORS = [
-    { id: "sky", name: "Bleu ciel", bg: "bg-[#38bdf8]" },
-    { id: "emerald", name: "Émeraude", bg: "bg-[#34d399]" },
-    { id: "rose", name: "Rose/Rouge", bg: "bg-[#fb7185]" },
-    { id: "violet", name: "Violet", bg: "bg-[#a78bfa]" },
-    { id: "amber", name: "Or/Ambre", bg: "bg-[#fbbf24]" },
-    { id: "fuchsia", name: "Fuchsia", bg: "bg-[#e879f9]" },
-    { id: "cyan", name: "Cyan", bg: "bg-[#22d3ee]" },
-    { id: "orange", name: "Orange", bg: "bg-[#fb923c]" },
-    { id: "yellow", name: "Jaune", bg: "bg-[#facc15]" },
-    { id: "slate", name: "Gris", bg: "bg-[#94a3b8]" }
+    { id: "sky", name: "Bleu", bg: "bg-[#2563eb]" },
+    { id: "rose", name: "Rouge", bg: "bg-[#dc2626]" },
+    { id: "emerald", name: "Vert", bg: "bg-[#16a34a]" },
+    { id: "amber", name: "Ambre/Or", bg: "bg-[#d97706]" },
+    { id: "violet", name: "Violet", bg: "bg-[#7c3aed]" },
+    { id: "fuchsia", name: "Fuchsia", bg: "bg-[#c026d3]" },
+    { id: "cyan", name: "Cyan", bg: "bg-[#0891b2]" },
+    { id: "orange", name: "Orange", bg: "bg-[#ea580c]" },
+    { id: "yellow", name: "Jaune", bg: "bg-[#ca8a04]" },
+    { id: "slate", name: "Gris", bg: "bg-[#475569]" }
 ];
 
 function openStatusModal(targetUid){
@@ -1122,7 +1416,7 @@ function openStatusModal(targetUid){
     var fan = fansData.find(function(f){ return f.user_id === editingStatusUserId; });
     var nameEl = document.getElementById("statusModalFanName");
     if(nameEl) nameEl.innerText = fan ? "Pour " + fan.name : "Pour ce fan";
-    renderTagsListModal(fan ? fan.status_code : "fan");
+    renderTagsListModal(fan ? (fan.status_code || "") : "");
     renderColorPalette();
     var inp = document.getElementById("newTagNameInput");
     if(inp) inp.value = "";
@@ -1153,35 +1447,44 @@ function renderTagsListModal(currentTagId){
     var container = document.getElementById("tagsListContainer");
     if(!container) return;
     if(!currentTags.length){
-        container.innerHTML = '<div class="text-xs text-slate-500 italic p-2">Aucune étiquette</div>';
+        container.innerHTML = '<div class="text-xs text-[#94a3b8] italic p-3 text-center">Aucune étiquette disponible. Créez-en une ci-dessous.</div>';
         return;
     }
     var colorMap = {
-        sky: "border-sky-500/30 bg-sky-500/10 text-sky-300",
-        rose: "border-rose-500/30 bg-rose-500/10 text-rose-300",
-        emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-        amber: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-        violet: "border-violet-500/30 bg-violet-500/10 text-violet-300",
-        fuchsia: "border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300",
-        cyan: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
-        yellow: "border-yellow-500/30 bg-yellow-500/10 text-yellow-300",
-        orange: "border-orange-500/30 bg-orange-500/10 text-orange-300",
-        slate: "border-slate-500/30 bg-slate-500/10 text-slate-300"
+        sky: "bg-[#2563eb] text-white border-[#1d4ed8]",
+        rose: "bg-[#dc2626] text-white border-[#b91c1c]",
+        emerald: "bg-[#16a34a] text-white border-[#15803d]",
+        amber: "bg-[#d97706] text-white border-[#b45309]",
+        violet: "bg-[#7c3aed] text-white border-[#6d28d9]",
+        fuchsia: "bg-[#c026d3] text-white border-[#a21caf]",
+        cyan: "bg-[#0891b2] text-white border-[#0e7490]",
+        yellow: "bg-[#ca8a04] text-white border-[#a16207]",
+        orange: "bg-[#ea580c] text-white border-[#c2410c]",
+        slate: "bg-[#475569] text-white border-[#334155]"
     };
 
-    container.innerHTML = currentTags.map(function(t){
+    var noneSelected = !currentTagId;
+    var noneBorder = noneSelected ? "border-[#1e293b] bg-[#f1f5f9] font-semibold" : "border-[#e5e7eb] bg-white hover:bg-[#f8f9fa]";
+    var noneHtml = '<div onclick="applyTag(\'\')" class="flex items-center justify-between p-2.5 rounded-xl border ' + noneBorder + ' cursor-pointer transition mb-2 shadow-2xs">' +
+        '<div class="flex items-center gap-2">' +
+            '<span class="text-xs px-2.5 py-0.5 rounded-full border border-[#cbd5e1] bg-[#e9edf0] text-[#64748b] font-medium">Aucune étiquette</span>' +
+            (noneSelected ? '<span class="text-[11px] text-[#1e293b] font-bold flex items-center gap-1"><i class="fa-solid fa-check"></i> Actuelle</span>' : '') +
+        '</div>' +
+    '</div>';
+
+    container.innerHTML = noneHtml + currentTags.map(function(t){
         var isSelected = currentTagId === t.id;
         var badgeCls = colorMap[t.color] || colorMap.sky;
         var deleteBtn = (!t.is_default && t.id !== "fan" && t.id !== "timewaster" && t.id !== "spender")
-            ? '<button type="button" onclick="event.stopPropagation(); deleteCustomTag(\'' + t.id + '\')" class="text-slate-600 hover:text-rose-400 p-1 transition" title="Supprimer cette étiquette"><i class="fa-solid fa-trash-can text-[11px]"></i></button>'
+            ? '<button type="button" onclick="event.stopPropagation(); deleteCustomTag(\'' + t.id + '\')" class="text-[#94a3b8] hover:text-red-500 p-1.5 rounded transition" title="Supprimer cette étiquette"><i class="fa-solid fa-trash-can text-[11px]"></i></button>'
             : '';
 
-        var activeBorder = isSelected ? "border-violet-500/60 bg-[#141525]" : "border-[#1c1d2c] bg-[#0b0c14] hover:border-[#2a2c42]";
+        var activeBorder = isSelected ? "border-[#1e293b] bg-[#f1f5f9] shadow-xs" : "border-[#e5e7eb] bg-white hover:bg-[#f8f9fa]";
 
-        return '<div onclick="applyTag(\'' + t.id + '\')" class="flex items-center justify-between p-2 rounded-xl border ' + activeBorder + ' cursor-pointer transition">' +
-            '<div class="flex items-center gap-2">' +
-                '<span class="text-xs px-2.5 py-0.5 rounded-full border font-medium ' + badgeCls + '">' + t.label + '</span>' +
-                (isSelected ? '<span class="text-[10px] text-violet-400 font-semibold"><i class="fa-solid fa-check"></i> Actuel</span>' : '') +
+        return '<div onclick="applyTag(\'' + t.id + '\')" class="flex items-center justify-between p-2.5 rounded-xl border ' + activeBorder + ' cursor-pointer transition mb-1.5 shadow-2xs">' +
+            '<div class="flex items-center gap-2.5">' +
+                '<span class="text-xs px-3 py-1 rounded-full border font-semibold ' + badgeCls + '">' + t.label + '</span>' +
+                (isSelected ? '<span class="text-[11px] text-[#1e293b] font-bold flex items-center gap-1"><i class="fa-solid fa-check"></i> Actuelle</span>' : '') +
             '</div>' +
             deleteBtn +
         '</div>';
@@ -1189,24 +1492,68 @@ function renderTagsListModal(currentTagId){
 }
 
 async function applyTag(tagId){
-    if(!editingStatusUserId) return;
+    var targetId = editingStatusUserId || activeUserId;
+    if(!targetId) return;
+
+    // Mise à jour immédiate et synchrone dans l'interface
+    var fan = fansData.find(function(f){ return f.user_id === targetId; });
+    var colorStyles = {
+        sky: "bg-[#2563eb] text-white border-[#1d4ed8]",
+        rose: "bg-[#dc2626] text-white border-[#b91c1c]",
+        emerald: "bg-[#16a34a] text-white border-[#15803d]",
+        amber: "bg-[#d97706] text-white border-[#b45309]",
+        violet: "bg-[#7c3aed] text-white border-[#6d28d9]",
+        fuchsia: "bg-[#c026d3] text-white border-[#a21caf]",
+        cyan: "bg-[#0891b2] text-white border-[#0e7490]",
+        yellow: "bg-[#ca8a04] text-white border-[#a16207]",
+        orange: "bg-[#ea580c] text-white border-[#c2410c]",
+        slate: "bg-[#475569] text-white border-[#334155]"
+    };
+
+    if(fan){
+        var tagObj = currentTags.find(function(t){ return t.id === tagId; });
+        if(tagObj){
+            fan.status_code = tagObj.id;
+            fan.status_label = tagObj.label;
+            fan.badge_style = colorStyles[tagObj.color] || colorStyles.sky;
+        } else {
+            fan.status_code = "";
+            fan.status_label = "";
+            fan.badge_style = "";
+        }
+        applyFilters();
+
+        if(activeUserId === targetId){
+            var badge = document.getElementById("chatBadge");
+            if(badge){
+                if(fan.status_label){
+                    badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ml-1 cursor-pointer hover:opacity-80 transition " + fan.badge_style;
+                    badge.innerText = fan.status_label;
+                    badge.classList.remove("hidden");
+                } else {
+                    badge.classList.add("hidden");
+                }
+            }
+        }
+    }
+
+    closeStatusModal();
+
     try{
         var r = await fetch("/api/status", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({token: authToken, user_id: editingStatusUserId, tag_id: tagId})
+            body: JSON.stringify({token: authToken, user_id: targetId, tag_id: tagId})
         });
         var d = await r.json();
-        if(d.ok){
-            closeStatusModal();
-            refreshData();
-        } else {
-            alert("Erreur: " + (d.error || "Inconnue"));
+        if(!d.ok){
+            console.error("Erreur serveur:", d.error);
         }
     }catch(e){
-        alert("Erreur réseau");
+        console.error("Erreur réseau applyTag:", e);
     }
 }
+
 
 async function createNewTagAndApply(){
     var inp = document.getElementById("newTagNameInput");
@@ -1438,7 +1785,7 @@ function closePaymentLinksModal(){
 function renderPaymentLinksList(){
     var c = document.getElementById("paymentLinksList");
     if(!paymentLinks || !paymentLinks.length){
-        c.innerHTML = '<div class="text-center text-slate-600 text-xs py-4">Aucun lien enregistré pour l\'instant.</div>';
+        c.innerHTML = '<div class="text-center text-[#9e988f] text-xs py-4">Aucun lien enregistré pour l\'instant.</div>';
         return;
     }
     c.innerHTML = paymentLinks.map(function(l, idx){
@@ -1455,10 +1802,10 @@ function renderPaymentLinksList(){
             : '';
 
         var sendBtnHtml = alreadySent
-            ? '<button onclick="sendDirectPaymentLink(' + idx + ')" class="px-2 py-1 rounded border border-[#242738] hover:border-slate-500 text-slate-400 hover:text-white text-[10px] transition flex items-center gap-1" title="Renvoyer ce lien">' +
+            ? '<button onclick="sendDirectPaymentLink(' + idx + ')" class="px-2 py-1 rounded border border-[#ded8ce] hover:border-slate-500 text-[#5e5850] hover:text-[#1f1e1c] text-[10px] transition flex items-center gap-1" title="Renvoyer ce lien">' +
                 '<i class="fa-solid fa-arrows-rotate text-[9px]"></i> Renvoyer' +
               '</button>'
-            : '<button onclick="sendDirectPaymentLink(' + idx + ')" class="px-2 py-1 rounded bg-violet-600 hover:bg-violet-500 text-white font-medium text-[10px] transition flex items-center gap-1" title="Envoyer directement au fan">' +
+            : '<button onclick="sendDirectPaymentLink(' + idx + ')" class="px-2 py-1 rounded bg-[#a67070] hover:bg-[#946060] text-white font-medium text-[10px] transition flex items-center gap-1" title="Envoyer directement au fan">' +
                 '<i class="fa-solid fa-paper-plane text-[9px]"></i> Envoyer direct' +
               '</button>';
 
@@ -1467,20 +1814,20 @@ function renderPaymentLinksList(){
         var urlStr = (l.url || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         var urlAttr = (l.url || "").replace(/"/g, "&quot;");
 
-        return '<div class="p-3 rounded-xl bg-[#0a0b0f] border border-[#1e2030] flex items-center justify-between gap-3">' +
+        return '<div class="p-3 rounded-xl bg-[#faf9f5] border border-[#ded8ce] flex items-center justify-between gap-3">' +
             '<div class="min-w-0 flex-1">' +
                 '<div class="flex flex-wrap items-center gap-1.5 mb-1">' +
-                    '<span class="text-xs font-medium text-white break-words" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;" title="' + titleAttr + '">' + titleStr + '</span>' +
+                    '<span class="text-xs font-medium text-[#1f1e1c] break-words" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;" title="' + titleAttr + '">' + titleStr + '</span>' +
                     badgeHtml +
                 '</div>' +
-                '<div class="text-[10px] text-slate-500 truncate font-mono" title="' + urlAttr + '">' + urlStr + '</div>' +
+                '<div class="text-[10px] text-[#7a746c] truncate font-mono" title="' + urlAttr + '">' + urlStr + '</div>' +
             '</div>' +
             '<div class="flex items-center gap-1.5 shrink-0">' +
-                '<button onclick="insertPaymentLink(' + idx + ')" class="px-2.5 py-1.5 rounded-lg bg-[#161722] hover:bg-[#202232] border border-[#242738] text-[10px] text-slate-300 hover:text-white transition" title="Mettre dans le champ message">' +
+                '<button onclick="insertPaymentLink(' + idx + ')" class="px-2.5 py-1.5 rounded-lg bg-[#f0ece4] hover:bg-[#e4ded4] border border-[#ded8ce] text-[10px] text-[#3d3a36] hover:text-[#1f1e1c] transition" title="Mettre dans le champ message">' +
                     'Insérer' +
                 '</button>' +
                 sendBtnHtml +
-                '<button onclick="deletePaymentLink(' + idx + ')" class="p-1.5 text-slate-600 hover:text-red-400 transition" title="Supprimer">' +
+                '<button onclick="deletePaymentLink(' + idx + ')" class="p-1.5 text-[#9e988f] hover:text-red-400 transition" title="Supprimer">' +
                     '<i class="fa-solid fa-trash-can text-[10px]"></i>' +
                 '</button>' +
             '</div>' +
@@ -1694,10 +2041,10 @@ function setScriptCategoryFilter(cat){
         var isAct = b.dataset.cat === cat;
         if(isAct){
             b.classList.add("bg-white", "text-black");
-            b.classList.remove("text-slate-400");
+            b.classList.remove("text-[#5e5850]");
         } else {
             b.classList.remove("bg-white", "text-black");
-            b.classList.add("text-slate-400");
+            b.classList.add("text-[#5e5850]");
         }
     });
     renderScriptsList();
@@ -1725,7 +2072,7 @@ function renderScriptsList(){
     });
 
     if(!filtered.length){
-        c.innerHTML = '<div class="text-center text-slate-600 text-xs py-6">Aucun script dans cette catégorie.</div>';
+        c.innerHTML = '<div class="text-center text-[#9e988f] text-xs py-6">Aucun script dans cette catégorie.</div>';
         return;
     }
 
@@ -1734,25 +2081,25 @@ function renderScriptsList(){
         var formatted = formatScriptText(s.content);
         var escFormatted = formatted.replace(/</g, "&lt;").replace(/>/g, "&gt;");
         
-        return '<div class="p-3 rounded-xl bg-[#0a0b0f] border border-[#1e2030] space-y-2 hover:border-slate-700 transition">' +
+        return '<div class="p-3 rounded-xl bg-[#faf9f5] border border-[#ded8ce] space-y-2 hover:border-[#ded8ce] transition">' +
             '<div class="flex items-center justify-between gap-2">' +
                 '<div class="flex items-center gap-2 min-w-0">' +
-                    '<span class="text-xs font-semibold text-white truncate">' + (s.title || "Script") + '</span>' +
+                    '<span class="text-xs font-semibold text-[#1f1e1c] truncate">' + (s.title || "Script") + '</span>' +
                     '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 shrink-0 font-medium">' + (s.category || "Général") + '</span>' +
                 '</div>' +
                 '<div class="flex items-center gap-1.5 shrink-0">' +
-                    '<button onclick="insertScript(' + realIdx + ')" class="px-2 py-1 rounded bg-[#161722] hover:bg-[#202232] border border-[#242738] text-[10px] text-slate-300 hover:text-white transition flex items-center gap-1" title="Insérer dans le champ">' +
+                    '<button onclick="insertScript(' + realIdx + ')" class="px-2 py-1 rounded bg-[#f0ece4] hover:bg-[#e4ded4] border border-[#ded8ce] text-[10px] text-[#3d3a36] hover:text-[#1f1e1c] transition flex items-center gap-1" title="Insérer dans le champ">' +
                         '<i class="fa-solid fa-pen-to-square text-[9px]"></i> Insérer' +
                     '</button>' +
                     '<button onclick="sendDirectScript(' + realIdx + ')" class="px-2 py-1 rounded bg-amber-600 hover:bg-amber-500 text-black font-semibold text-[10px] transition flex items-center gap-1" title="Envoyer directement">' +
                         '<i class="fa-solid fa-paper-plane text-[9px]"></i> Envoyer direct' +
                     '</button>' +
-                    '<button onclick="deleteScript(' + realIdx + ')" class="p-1 text-slate-600 hover:text-red-400 transition" title="Supprimer">' +
+                    '<button onclick="deleteScript(' + realIdx + ')" class="p-1 text-[#9e988f] hover:text-red-400 transition" title="Supprimer">' +
                         '<i class="fa-solid fa-trash-can text-[10px]"></i>' +
                     '</button>' +
                 '</div>' +
             '</div>' +
-            '<div class="text-xs text-slate-400 whitespace-pre-wrap leading-relaxed bg-[#0f1018] p-2.5 rounded-lg border border-[#161722] font-mono text-[11px]">' +
+            '<div class="text-xs text-[#5e5850] whitespace-pre-wrap leading-relaxed bg-[#ffffff] p-2.5 rounded-lg border border-[#161722] font-mono text-[11px]">' +
                 escFormatted +
             '</div>' +
         '</div>';
@@ -1870,10 +2217,10 @@ function setVaultCategoryFilter(cat){
         var isAct = b.dataset.cat === cat;
         if(isAct){
             b.classList.add("bg-white", "text-black");
-            b.classList.remove("text-slate-400");
+            b.classList.remove("text-[#5e5850]");
         } else {
             b.classList.remove("bg-white", "text-black");
-            b.classList.add("text-slate-400");
+            b.classList.add("text-[#5e5850]");
         }
     });
     renderVaultGallery();
@@ -1893,7 +2240,7 @@ function renderVaultGallery(){
     });
 
     if(!filtered.length){
-        g.innerHTML = '<div class="col-span-full text-center text-slate-600 text-xs py-10">Aucun média dans cette catégorie du Vault. Cliquez sur "Importer" pour en ajouter.</div>';
+        g.innerHTML = '<div class="col-span-full text-center text-[#9e988f] text-xs py-10">Aucun média dans cette catégorie du Vault. Cliquez sur "Importer" pour en ajouter.</div>';
         return;
     }
 
@@ -1901,38 +2248,38 @@ function renderVaultGallery(){
         var alreadySent = sentIds.includes(item.id);
         var isVideo = item.media_type === "video";
         var thumbHtml = isVideo
-            ? '<div class="w-full h-32 bg-[#12141f] rounded-lg flex flex-col items-center justify-center relative overflow-hidden border border-[#1e2030]">' +
+            ? '<div class="w-full h-32 bg-[#12141f] rounded-lg flex flex-col items-center justify-center relative overflow-hidden border border-[#ded8ce]">' +
                 '<video src="' + item.url + '" class="w-full h-full object-cover opacity-60"></video>' +
                 '<div class="absolute inset-0 flex items-center justify-center bg-black/30">' +
-                    '<div class="w-8 h-8 rounded-full bg-sky-600/90 text-white flex items-center justify-center shadow-lg"><i class="fa-solid fa-play text-xs ml-0.5"></i></div>' +
+                    '<div class="w-8 h-8 rounded-full bg-sky-600/90 text-[#1f1e1c] flex items-center justify-center shadow-lg"><i class="fa-solid fa-play text-xs ml-0.5"></i></div>' +
                 '</div>' +
               '</div>'
-            : '<img src="' + item.url + '" class="w-full h-32 object-cover rounded-lg border border-[#1e2030] hover:opacity-90 transition">';
+            : '<img src="' + item.url + '" class="w-full h-32 object-cover rounded-lg border border-[#ded8ce] hover:opacity-90 transition">';
 
         var sendBtnHtml = activeUserId
             ? (alreadySent
-                ? '<button onclick="sendVaultItemToChat(\'' + item.id + '\')" class="w-full py-1.5 rounded bg-orange-700 hover:bg-orange-600 text-white font-medium text-[11px] transition flex items-center justify-center gap-1 shadow-sm"><i class="fa-solid fa-rotate-right text-[9px]"></i> Renvoyer quand même</button>'
-                : '<button onclick="sendVaultItemToChat(\'' + item.id + '\')" class="w-full py-1.5 rounded bg-violet-600 hover:bg-violet-500 text-white font-medium text-[11px] transition flex items-center justify-center gap-1 shadow-sm"><i class="fa-solid fa-paper-plane text-[9px]"></i> Envoyer au fan</button>')
-            : '<span class="text-[10px] text-slate-600 italic text-center block">Sélectionnez un fan pour envoyer</span>';
+                ? '<button onclick="sendVaultItemToChat(\'' + item.id + '\')" class="w-full py-1.5 rounded bg-orange-700 hover:bg-orange-600 text-[#1f1e1c] font-medium text-[11px] transition flex items-center justify-center gap-1 shadow-sm"><i class="fa-solid fa-rotate-right text-[9px]"></i> Renvoyer quand même</button>'
+                : '<button onclick="sendVaultItemToChat(\'' + item.id + '\')" class="w-full py-1.5 rounded bg-[#a67070] hover:bg-[#946060] text-white font-medium text-[11px] transition flex items-center justify-center gap-1 shadow-sm"><i class="fa-solid fa-paper-plane text-[9px]"></i> Envoyer au fan</button>')
+            : '<span class="text-[10px] text-[#9e988f] italic text-center block">Sélectionnez un fan pour envoyer</span>';
 
         var alreadySentBadge = alreadySent
-            ? '<div class="absolute top-1.5 left-1.5 text-[9px] bg-orange-600/90 text-white px-1.5 py-0.5 rounded font-bold">⚠️ Déjà envoyé</div>'
+            ? '<div class="absolute top-1.5 left-1.5 text-[9px] bg-orange-600/90 text-[#1f1e1c] px-1.5 py-0.5 rounded font-bold">⚠️ Déjà envoyé</div>'
             : '';
 
-        return '<div class="p-2.5 rounded-xl bg-[#0a0b0f] border border-[#1e2030] flex flex-col justify-between space-y-2 hover:border-slate-700 transition">' +
+        return '<div class="p-2.5 rounded-xl bg-[#faf9f5] border border-[#ded8ce] flex flex-col justify-between space-y-2 hover:border-[#ded8ce] transition">' +
             '<div class="space-y-1.5">' +
                 '<div class="relative group">' +
                     '<a href="' + item.url + '" target="_blank" class="block cursor-pointer">' +
                         thumbHtml +
                     '</a>' +
                     alreadySentBadge +
-                    '<button onclick="deleteVaultItem(\'' + item.id + '\')" class="absolute top-1.5 right-1.5 w-6 h-6 rounded-md bg-black/70 hover:bg-red-600 text-white text-[10px] flex items-center justify-center transition" title="Supprimer">' +
+                    '<button onclick="deleteVaultItem(\'' + item.id + '\')" class="absolute top-1.5 right-1.5 w-6 h-6 rounded-md bg-black/70 hover:bg-red-600 text-[#1f1e1c] text-[10px] flex items-center justify-center transition" title="Supprimer">' +
                         '<i class="fa-solid fa-trash-can"></i>' +
                     '</button>' +
                 '</div>' +
                 '<div class="min-w-0">' +
-                    '<div class="text-xs font-semibold text-white truncate" title="' + (item.title || "") + '">' + (item.title || "Média") + '</div>' +
-                    '<div class="flex items-center justify-between text-[10px] text-slate-500 mt-0.5">' +
+                    '<div class="text-xs font-semibold text-[#1f1e1c] truncate" title="' + (item.title || "") + '">' + (item.title || "Média") + '</div>' +
+                    '<div class="flex items-center justify-between text-[10px] text-[#7a746c] mt-0.5">' +
                         '<span>' + (item.category || "Général") + '</span>' +
                         '<span>' + (item.size ? Math.round(item.size / 1024) + " KB" : "") + '</span>' +
                     '</div>' +
@@ -2144,7 +2491,7 @@ function handleMessageInput(){
             slashMenuItems = items;
             slashMenuIndex = -1;
             list.innerHTML = items.map(function(it, i){
-                return '<div class="slash-item px-3 py-2 text-xs text-slate-200 cursor-pointer hover:bg-[#1e2030] truncate" data-idx="' + i + '" onmousedown="event.preventDefault(); selectSlashItem(' + i + ')">' + it.label + '</div>';
+                return '<div class="slash-item px-3 py-2 text-xs text-[#2d2b29] cursor-pointer hover:bg-[#1e2030] truncate" data-idx="' + i + '" onmousedown="event.preventDefault(); selectSlashItem(' + i + ')">' + it.label + '</div>';
             }).join("");
             menu.classList.remove("hidden");
             return;
@@ -2233,8 +2580,8 @@ function setRatesRulesTab(tab){
     var ruPanel = document.getElementById("panelRules");
     if(rBtn) rBtn.classList.toggle("bg-violet-700", tab === "rates");
     if(ruBtn) ruBtn.classList.toggle("bg-violet-700", tab === "rules");
-    if(rBtn) rBtn.classList.toggle("bg-[#161722]", tab !== "rates");
-    if(ruBtn) ruBtn.classList.toggle("bg-[#161722]", tab !== "rules");
+    if(rBtn) rBtn.classList.toggle("bg-[#f0ece4]", tab !== "rates");
+    if(ruBtn) ruBtn.classList.toggle("bg-[#f0ece4]", tab !== "rules");
     if(rPanel) rPanel.classList.toggle("hidden", tab !== "rates");
     if(ruPanel) ruPanel.classList.toggle("hidden", tab !== "rules");
     if(tab === "rates") renderRatesList();
@@ -2246,14 +2593,14 @@ function renderRatesList(){
     if(!c) return;
     var rates = ratesRulesData.rates || [];
     if(!rates.length){
-        c.innerHTML = '<div class="text-slate-600 text-xs py-4 text-center">Aucun tarif. Ajoutez-en un ci-dessous.</div>';
+        c.innerHTML = '<div class="text-[#9e988f] text-xs py-4 text-center">Aucun tarif. Ajoutez-en un ci-dessous.</div>';
         return;
     }
     c.innerHTML = rates.map(function(r, i){
-        return '<div class="flex items-center gap-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg px-3 py-2">' +
-            '<span class="flex-1 text-xs text-white">' + r.label + '</span>' +
+        return '<div class="flex items-center gap-2 bg-[#faf9f5] border border-[#ded8ce] rounded-lg px-3 py-2">' +
+            '<span class="flex-1 text-xs text-[#1f1e1c]">' + r.label + '</span>' +
             '<span class="text-xs font-bold text-emerald-400">' + r.price + ' €</span>' +
-            '<button onclick="deleteRate(' + i + ')" class="text-slate-600 hover:text-red-400 transition"><i class="fa-solid fa-trash-can text-[10px]"></i></button>' +
+            '<button onclick="deleteRate(' + i + ')" class="text-[#9e988f] hover:text-red-400 transition"><i class="fa-solid fa-trash-can text-[10px]"></i></button>' +
         '</div>';
     }).join("");
 }
@@ -2263,13 +2610,13 @@ function renderRulesList(){
     if(!c) return;
     var rules = ratesRulesData.rules || [];
     if(!rules.length){
-        c.innerHTML = '<div class="text-slate-600 text-xs py-4 text-center">Aucune règle. Ajoutez-en une ci-dessous.</div>';
+        c.innerHTML = '<div class="text-[#9e988f] text-xs py-4 text-center">Aucune règle. Ajoutez-en une ci-dessous.</div>';
         return;
     }
     c.innerHTML = rules.map(function(r, i){
-        return '<div class="flex items-start gap-2 bg-[#0a0b0f] border border-[#1e2030] rounded-lg px-3 py-2">' +
-            '<span class="flex-1 text-xs text-slate-200">' + r.text + '</span>' +
-            '<button onclick="deleteRule(' + i + ')" class="text-slate-600 hover:text-red-400 transition"><i class="fa-solid fa-trash-can text-[10px]"></i></button>' +
+        return '<div class="flex items-start gap-2 bg-[#faf9f5] border border-[#ded8ce] rounded-lg px-3 py-2">' +
+            '<span class="flex-1 text-xs text-[#2d2b29]">' + r.text + '</span>' +
+            '<button onclick="deleteRule(' + i + ')" class="text-[#9e988f] hover:text-red-400 transition"><i class="fa-solid fa-trash-can text-[10px]"></i></button>' +
         '</div>';
     }).join("");
 }
@@ -2385,6 +2732,390 @@ document.addEventListener("visibilitychange", function(){
 });
 
 window.addEventListener("DOMContentLoaded", checkAuth);
+
+
+
+// ====== THÈME & PARAMÈTRES UTILISATEUR ======
+var currentThemePreference = localStorage.getItem("miwa_theme_preference") || "auto";
+
+function applyCurrentTheme(){
+    var isDark = false;
+    if(currentThemePreference === "dark"){
+        isDark = true;
+    } else if(currentThemePreference === "light"){
+        isDark = false;
+    } else {
+        isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    
+    if(isDark){
+        document.documentElement.classList.add("dark");
+    } else {
+        document.documentElement.classList.remove("dark");
+    }
+    updateThemeButtonsUI();
+}
+
+function setThemePreference(pref){
+    currentThemePreference = pref;
+    localStorage.setItem("miwa_theme_preference", pref);
+    applyCurrentTheme();
+}
+
+function updateThemeButtonsUI(){
+    var bLight = document.getElementById("themeBtnLight");
+    var bDark = document.getElementById("themeBtnDark");
+    var bAuto = document.getElementById("themeBtnAuto");
+    if(!bLight || !bDark || !bAuto) return;
+    
+    [bLight, bDark, bAuto].forEach(function(b){
+        b.classList.remove("border-[#1e293b]", "border-sky-500", "bg-[#e9edf0]", "shadow-sm");
+        b.classList.add("border-[#e5e7eb]", "bg-[#f8f9fa]");
+    });
+
+    if(currentThemePreference === "light"){
+        bLight.classList.add("border-[#1e293b]", "bg-[#e9edf0]", "shadow-sm");
+        bLight.classList.remove("border-[#e5e7eb]", "bg-[#f8f9fa]");
+    } else if(currentThemePreference === "dark"){
+        bDark.classList.add("border-sky-500", "bg-[#1e293b]", "shadow-sm");
+        bDark.classList.remove("border-[#e5e7eb]", "bg-[#f8f9fa]");
+    } else {
+        bAuto.classList.add("border-[#1e293b]", "bg-[#e9edf0]", "shadow-sm");
+        bAuto.classList.remove("border-[#e5e7eb]", "bg-[#f8f9fa]");
+    }
+}
+
+function openSettingsModal(){
+    updateThemeButtonsUI();
+    var modal = document.getElementById("settingsModal");
+    if(modal) modal.style.display = "flex";
+}
+
+function closeSettingsModal(){
+    var modal = document.getElementById("settingsModal");
+    if(modal) modal.style.display = "none";
+}
+
+if(window.matchMedia){
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(){
+        if(currentThemePreference === "auto") applyCurrentTheme();
+    });
+}
+applyCurrentTheme();
+
+// ====== CLIC DROIT MENU CONTEXTUEL POUR DISCUSSION ======
+var contextMenuUserId = null;
+
+function openFanContextMenu(e, uid){
+    e.preventDefault();
+    e.stopPropagation();
+    contextMenuUserId = uid;
+    
+    var fan = fansData.find(function(f){ return f.user_id === uid; });
+    var nameEl = document.getElementById("contextMenuFanName");
+    if(nameEl && fan) nameEl.innerText = fan.name;
+
+    var readTextEl = document.getElementById("contextReadText");
+    var readIconEl = document.getElementById("contextReadIcon");
+    if(fan && fan.is_unread){
+        if(readTextEl) readTextEl.innerText = "Marquer comme lu";
+        if(readIconEl) readIconEl.className = "fa-solid fa-check-double text-[#2563eb] w-4 text-center";
+    } else {
+        if(readTextEl) readTextEl.innerText = "Marquer comme non lu";
+        if(readIconEl) readIconEl.className = "fa-regular fa-envelope text-[#64748b] w-4 text-center";
+    }
+
+    var menu = document.getElementById("fanContextMenu");
+    if(!menu) return;
+
+    // Coordonnées du curseur
+    var x = e.clientX;
+    var y = e.clientY;
+    var menuWidth = 250;
+    var menuHeight = 210;
+
+    if(x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 10;
+    if(y + menuHeight > window.innerHeight) y = window.innerHeight - menuHeight - 10;
+
+    menu.style.left = Math.max(10, x) + "px";
+    menu.style.top = Math.max(10, y) + "px";
+    menu.style.display = "block";
+}
+
+function closeFanContextMenu(){
+    var menu = document.getElementById("fanContextMenu");
+    if(menu) menu.style.display = "none";
+    contextMenuUserId = null;
+}
+
+// Fermeture du menu contextuel au clic ailleurs ou sur Echap
+document.addEventListener("click", function(e){
+    var menu = document.getElementById("fanContextMenu");
+    if(menu && !menu.contains(e.target)){
+        closeFanContextMenu();
+    }
+});
+document.addEventListener("keydown", function(e){
+    if(e.key === "Escape") closeFanContextMenu();
+});
+
+// Action : Masquer la discussion (supprimer 1 fois)
+async function contextActionHideOnce(){
+    var uid = contextMenuUserId;
+    closeFanContextMenu();
+    if(!uid) return;
+
+    // Masquage visuel immédiat
+    fansData = fansData.filter(function(f){ return f.user_id !== uid; });
+    if(activeUserId === uid){
+        activeUserId = null;
+        var chatMessages = document.getElementById("chatMessages");
+        if(chatMessages){
+            chatMessages.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-5 select-none">' +
+                '<div class="w-12 h-12 flex items-center justify-center text-[#1e293b]">' +
+                '<svg class="w-10 h-10 stroke-current fill-none stroke-[1.5]" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.502 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>' +
+                '</div>' +
+                '<div class="space-y-2"><h2 class="text-2xl font-bold font-serif-title text-[#0f172a] tracking-tight">Discussion masquée</h2><p class="text-xs text-[#64748b]">Cette discussion réapparaîtra si le fan renvoie un message.</p></div>' +
+                '</div>';
+        }
+        var chatTitle = document.getElementById("chatTitle");
+        if(chatTitle) chatTitle.innerText = "Sélectionne un fan";
+        var ac = document.getElementById("chatAvatarContainer");
+        if(ac) ac.classList.add("hidden");
+        var sm = document.getElementById("sendMessageBox");
+        if(sm) sm.classList.add("hidden");
+    }
+    applyFilters();
+
+    try {
+        await fetch("/api/chat/delete", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ token: authToken, user_id: uid, permanent: false })
+        });
+    } catch(err){
+        console.error("Erreur masquage discussion:", err);
+    }
+}
+
+// Action : Supprimer définitivement
+async function contextActionDeletePermanent(){
+    var uid = contextMenuUserId;
+    closeFanContextMenu();
+    if(!uid) return;
+
+    var fan = fansData.find(function(f){ return f.user_id === uid; });
+    var name = fan ? fan.name : uid;
+    
+    var conf = confirm("⚠️ Supprimer définitivement cette discussion avec " + name + " ?\n\nCette action est irréversible : tout l'historique des messages et la fiche du fan seront supprimés.");
+    if(!conf) return;
+
+    // Suppression visuelle immédiate
+    fansData = fansData.filter(function(f){ return f.user_id !== uid; });
+    if(activeUserId === uid){
+        activeUserId = null;
+        var chatMessages = document.getElementById("chatMessages");
+        if(chatMessages){
+            chatMessages.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-5 select-none">' +
+                '<div class="w-12 h-12 flex items-center justify-center text-[#dc2626]">' +
+                '<i class="fa-solid fa-trash-can text-3xl"></i>' +
+                '</div>' +
+                '<div class="space-y-2"><h2 class="text-2xl font-bold font-serif-title text-[#0f172a] tracking-tight">Discussion supprimée</h2><p class="text-xs text-[#64748b]">L\'historique et le contact ont été effacés définitivement.</p></div>' +
+                '</div>';
+        }
+        var chatTitle = document.getElementById("chatTitle");
+        if(chatTitle) chatTitle.innerText = "Sélectionne un fan";
+        var ac = document.getElementById("chatAvatarContainer");
+        if(ac) ac.classList.add("hidden");
+        var sm = document.getElementById("sendMessageBox");
+        if(sm) sm.classList.add("hidden");
+    }
+    applyFilters();
+
+    try {
+        var r = await fetch("/api/chat/delete", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ token: authToken, user_id: uid, permanent: true })
+        });
+        var d = await r.json();
+        if(!d.ok){
+            alert("Erreur lors de la suppression : " + (d.error || "Inconnue"));
+        }
+    } catch(err){
+        alert("Erreur réseau lors de la suppression.");
+    }
+}
+
+// Action : Basculer Lu / Non lu
+async function contextActionToggleRead(){
+    var uid = contextMenuUserId;
+    closeFanContextMenu();
+    if(!uid) return;
+
+    var fan = fansData.find(function(f){ return f.user_id === uid; });
+    if(!fan) return;
+
+    fan.is_unread = !fan.is_unread;
+    applyFilters();
+
+    if(!fan.is_unread){
+        try {
+            await fetch("/api/mark-read", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ token: authToken, user_id: uid })
+            });
+        } catch(e){}
+    }
+}
+
+// Action : Changer étiquette depuis menu contextuel
+function contextActionEditTag(){
+    var uid = contextMenuUserId;
+    closeFanContextMenu();
+    if(!uid) return;
+    openStatusModal(uid);
+}
+
+// Action : Copier ID Telegram
+function contextActionCopyId(){
+    var uid = contextMenuUserId;
+    closeFanContextMenu();
+    if(!uid) return;
+    if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(uid).then(function(){
+            alert("ID Telegram " + uid + " copié dans le presse-papier !");
+        });
+    } else {
+        prompt("ID Telegram :", uid);
+    }
+}
+
+// ── MOBILE NAVIGATION ──────────────────────────────────────────────────────
+function isMobile() { return window.innerWidth < 768; }
+
+function mobileShowChat() {
+    if (!isMobile()) return;
+    var sidebar = document.getElementById('sidebarPanel');
+    var chat    = document.getElementById('chatPanel');
+    if (sidebar) sidebar.classList.add('mobile-hidden');
+    if (chat)    chat.classList.add('mobile-visible');
+}
+
+function mobileBackToList() {
+    activeUserId = null;
+    sessionStorage.removeItem("miwa_active_fan");
+    var sidebar = document.getElementById('sidebarPanel');
+    var chat    = document.getElementById('chatPanel');
+    if (sidebar) sidebar.classList.remove('mobile-hidden');
+    if (chat)    chat.classList.remove('mobile-visible');
+    applyFilters();
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+// ──────────────────────────────────────────────────────────────────────────
+
+// Action : Infos & Ancienneté fan
+async function contextActionFanInfo() {
+    var uid = contextMenuUserId;
+    closeFanContextMenu();
+    if (!uid) return;
+
+    var fan = fansData.find(function(f){ return f.user_id === uid; });
+    var name = fan ? fan.name : uid;
+
+    // Afficher la modale avec loader
+    document.getElementById("fanInfoModalName").innerText = name;
+    document.getElementById("fanInfoModalBody").innerHTML = '<div class="flex items-center justify-center py-6"><div class="w-6 h-6 border-2 border-[#2563eb] border-t-transparent rounded-full animate-spin"></div><span class="ml-3 text-sm text-[#64748b]">Chargement…</span></div>';
+    document.getElementById("fanInfoModal").style.display = "flex";
+
+    try {
+        var r = await fetch("/api/chat/" + encodeURIComponent(uid) + "?token=" + encodeURIComponent(authToken));
+        if (!r.ok) throw new Error("Erreur API");
+        var data = await r.json();
+        var history = data.history || [];
+
+        var totalMessages = history.length;
+        var firstDate = null;
+        var firstMsg = null;
+
+        // Trouver le premier vrai message (du fan ou de Miwa)
+        for (var i = 0; i < history.length; i++) {
+            if (history[i].timestamp) {
+                firstDate = new Date(history[i].timestamp);
+                firstMsg = history[i];
+                break;
+            }
+        }
+
+        var html = '';
+
+        if (!firstDate) {
+            html = '<div class="text-center text-[#94a3b8] text-sm py-4">Aucun historique disponible pour ce fan.</div>';
+        } else {
+            var now = new Date();
+            var diffMs = now - firstDate;
+            var diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            var diffMonths = Math.floor(diffDays / 30);
+            var diffYears = Math.floor(diffDays / 365);
+
+            var dureeStr = '';
+            if (diffDays === 0) dureeStr = "Aujourd'hui 🎉";
+            else if (diffDays === 1) dureeStr = "Depuis hier";
+            else if (diffDays < 7) dureeStr = "Depuis " + diffDays + " jours";
+            else if (diffDays < 30) dureeStr = "Depuis " + Math.floor(diffDays / 7) + " semaine(s)";
+            else if (diffMonths < 12) dureeStr = "Depuis " + diffMonths + " mois";
+            else dureeStr = "Depuis " + diffYears + " an(s) et " + (diffMonths % 12) + " mois";
+
+            var dateStr = firstDate.toLocaleDateString('fr-FR', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+            var timeStr = firstDate.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+
+            // Compter msgs fan vs Miwa
+            var fanMsgCount = history.filter(function(m){ return m.role === 'user'; }).length;
+            var miwaMsgCount = history.filter(function(m){ return m.role === 'assistant'; }).length;
+
+            // Aperçu du premier message
+            var firstContent = '';
+            if (firstMsg) {
+                if (firstMsg.content) firstContent = firstMsg.content.substring(0, 80) + (firstMsg.content.length > 80 ? '…' : '');
+                else if (firstMsg.photo_url) firstContent = '📷 Photo';
+            }
+
+            html = '<div class="space-y-3">'
+                + '<div class="bg-[#eff6ff] border border-[#bfdbfe] rounded-xl p-4 text-center">'
+                + '<div class="text-3xl font-bold text-[#1d4ed8]">' + (diffYears > 0 ? diffYears + 'an' + (diffYears > 1 ? 's' : '') : diffDays === 0 ? '🎉' : diffDays + 'j') + '</div>'
+                + '<div class="text-xs text-[#3b82f6] font-medium mt-1">' + dureeStr + '</div>'
+                + '</div>'
+                + '<div class="grid grid-cols-2 gap-2">'
+                + '<div class="bg-[#f8fafc] rounded-xl p-3 text-center border border-[#e2e8f0]">'
+                + '<div class="text-lg font-bold text-[#0f172a]">' + totalMessages + '</div>'
+                + '<div class="text-[10px] text-[#64748b]">messages total</div>'
+                + '</div>'
+                + '<div class="bg-[#f8fafc] rounded-xl p-3 text-center border border-[#e2e8f0]">'
+                + '<div class="text-lg font-bold text-[#0f172a]">' + fanMsgCount + ' / ' + miwaMsgCount + '</div>'
+                + '<div class="text-[10px] text-[#64748b]">fan / toi</div>'
+                + '</div>'
+                + '</div>'
+                + '<div class="bg-[#f8fafc] rounded-xl p-3 border border-[#e2e8f0]">'
+                + '<div class="text-[10px] text-[#94a3b8] uppercase tracking-wide font-semibold mb-1">1er message</div>'
+                + '<div class="text-xs text-[#334155] font-medium">' + dateStr + ' à ' + timeStr + '</div>'
+                + (firstContent ? '<div class="text-[11px] text-[#64748b] mt-1 italic">"' + firstContent + '"</div>' : '')
+                + '</div>'
+                + '</div>';
+        }
+
+        document.getElementById("fanInfoModalBody").innerHTML = html;
+
+    } catch(err) {
+        document.getElementById("fanInfoModalBody").innerHTML = '<div class="text-center text-red-500 text-sm py-4">Impossible de charger les infos.<br><span class="text-[#94a3b8] text-xs">' + err.message + '</span></div>';
+    }
+}
+
+function closeFanInfoModal() {
+    document.getElementById("fanInfoModal").style.display = "none";
+}
+
 
 </script>
 </body>
