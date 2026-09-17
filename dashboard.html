@@ -3043,7 +3043,10 @@ async function contextActionFanInfo() {
         // Trouver le premier vrai message (du fan ou de Miwa)
         for (var i = 0; i < history.length; i++) {
             if (history[i].timestamp) {
-                firstDate = new Date(history[i].timestamp);
+                var ts = history[i].timestamp;
+                // Si timestamp en secondes (Unix), convertir en ms
+                if (typeof ts === 'number' && ts < 1e12) ts = ts * 1000;
+                firstDate = new Date(ts);
                 firstMsg = history[i];
                 break;
             }
