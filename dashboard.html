@@ -1104,6 +1104,14 @@ function updateKPIs(s){
     if(revEl) revEl.innerText = (s.total_revenue || 0).toFixed(0) + " €";
 }
 
+function isGoldFan(item){
+    if(!item) return false;
+    if(item.status_code === "dore" || item.status_code === "gold" || item.status_code === "dorer") return true;
+    var tag = currentTags.find(function(t){ return t.id === item.status_code; });
+    if(tag && (tag.color === "gold" || (tag.label && tag.label.toLowerCase().includes("dor")))) return true;
+    return false;
+}
+
 function applyFilters(){
     var q = document.getElementById("searchInput").value.toLowerCase();
     var f = fansData.filter(function(item){
@@ -1111,6 +1119,23 @@ function applyFilters(){
                  item.user_id.includes(q) ||
                  JSON.stringify(item.profile).toLowerCase().includes(q);
         if(!ms) return false;
+
+        var isGold = isGoldFan(item);
+        var isFilteringGold = (activeFilter === "dore" || activeFilter === "gold" || activeFilter === "dorer");
+        if(!isFilteringGold){
+            var activeTag = currentTags.find(function(t){ return t.id === activeFilter; });
+            if(activeTag && (activeTag.color === "gold" || (activeTag.label && activeTag.label.toLowerCase().includes("dor")))){
+                isFilteringGold = true;
+            }
+        }
+
+        if(isFilteringGold){
+            return item.status_code === activeFilter || isGold;
+        }
+
+        // Pour tous les autres filtres (Tous, Non lus, etc.) : MASQUER les fans dorés
+        if(isGold) return false;
+
         if(activeFilter === "unread") return item.is_unread;
         if(activeFilter === "followup") return item.followup_date && item.followup_date.trim() !== "";
         if(activeFilter === "all") return true;
@@ -1145,9 +1170,10 @@ function renderList(fans){
         return;
     }
 
-    // Mettre à jour les compteurs dans les onglets Tous (N) et Non Lus (N)
-    var totalCount = fansData.length;
-    var unreadCount = fansData.filter(function(x){ return x.is_unread; }).length;
+    // Mettre à jour les compteurs dans les onglets Tous (N) et Non Lus (N) (sans les masqués dorés)
+    var visibleFans = fansData.filter(function(x){ return !isGoldFan(x); });
+    var totalCount = visibleFans.length;
+    var unreadCount = visibleFans.filter(function(x){ return x.is_unread; }).length;
     var elAll = document.getElementById("tabCountAll");
     var elUnread = document.getElementById("tabCountUnread");
     if(elAll) elAll.innerText = "(" + totalCount + ")";
@@ -1453,6 +1479,7 @@ let editingStatusUserId = null;
 let selectedTagColor = "violet";
 
 const AVAILABLE_COLORS = [
+    { id: "gold", name: "Doré VIP (Masqué)", bg: "bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500" },
     { id: "sky", name: "Bleu", bg: "bg-[#2563eb]" },
     { id: "rose", name: "Rouge", bg: "bg-[#dc2626]" },
     { id: "emerald", name: "Vert", bg: "bg-[#16a34a]" },
@@ -1514,7 +1541,8 @@ function renderTagsListModal(currentTagId){
         cyan: "bg-[#0891b2] text-white border-[#0e7490]",
         yellow: "bg-[#ca8a04] text-white border-[#a16207]",
         orange: "bg-[#ea580c] text-white border-[#c2410c]",
-        slate: "bg-[#475569] text-white border-[#334155]"
+        slate: "bg-[#475569] text-white border-[#334155]",
+        gold: "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-amber-950 border-amber-400 shadow-sm font-bold"
     };
 
     var noneSelected = !currentTagId;
@@ -1561,7 +1589,8 @@ async function applyTag(tagId){
         cyan: "bg-[#0891b2] text-white border-[#0e7490]",
         yellow: "bg-[#ca8a04] text-white border-[#a16207]",
         orange: "bg-[#ea580c] text-white border-[#c2410c]",
-        slate: "bg-[#475569] text-white border-[#334155]"
+        slate: "bg-[#475569] text-white border-[#334155]",
+        gold: "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-amber-950 border-amber-400 shadow-sm font-bold"
     };
 
     if(fan){
