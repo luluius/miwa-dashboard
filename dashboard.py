@@ -57,22 +57,24 @@ AI_DETECTION_PATTERNS = [
 ]
 
 COLOR_STYLES = {
-    "sky": {"badge": "bg-sky-500/15 text-sky-300 border-sky-500/30", "dot": "bg-sky-400", "hex": "#38bdf8"},
-    "rose": {"badge": "bg-rose-500/15 text-rose-300 border-rose-500/30", "dot": "bg-rose-400", "hex": "#fb7185"},
-    "emerald": {"badge": "bg-emerald-500/15 text-emerald-300 border-emerald-500/30", "dot": "bg-emerald-400", "hex": "#34d399"},
-    "amber": {"badge": "bg-amber-500/15 text-amber-300 border-amber-500/30", "dot": "bg-amber-400", "hex": "#fbbf24"},
-    "violet": {"badge": "bg-violet-500/15 text-violet-300 border-violet-500/30", "dot": "bg-violet-400", "hex": "#a78bfa"},
-    "fuchsia": {"badge": "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30", "dot": "bg-fuchsia-400", "hex": "#e879f9"},
-    "cyan": {"badge": "bg-cyan-500/15 text-cyan-300 border-cyan-500/30", "dot": "bg-cyan-400", "hex": "#22d3ee"},
-    "yellow": {"badge": "bg-yellow-500/15 text-yellow-300 border-yellow-500/30", "dot": "bg-yellow-400", "hex": "#facc15"},
-    "orange": {"badge": "bg-orange-500/15 text-orange-300 border-orange-500/30", "dot": "bg-orange-400", "hex": "#fb923c"},
-    "slate": {"badge": "bg-slate-500/15 text-slate-300 border-slate-500/30", "dot": "bg-slate-400", "hex": "#94a3b8"}
+    "sky": {"badge": "bg-[#2563eb] text-white border-[#1d4ed8] font-semibold", "dot": "bg-[#2563eb]", "hex": "#2563eb"},
+    "rose": {"badge": "bg-[#dc2626] text-white border-[#b91c1c] font-semibold", "dot": "bg-[#dc2626]", "hex": "#dc2626"},
+    "emerald": {"badge": "bg-[#16a34a] text-white border-[#15803d] font-semibold", "dot": "bg-[#16a34a]", "hex": "#16a34a"},
+    "amber": {"badge": "bg-[#d97706] text-white border-[#b45309] font-semibold", "dot": "bg-[#d97706]", "hex": "#d97706"},
+    "violet": {"badge": "bg-[#7c3aed] text-white border-[#6d28d9] font-semibold", "dot": "bg-[#7c3aed]", "hex": "#7c3aed"},
+    "fuchsia": {"badge": "bg-[#c026d3] text-white border-[#a21caf] font-semibold", "dot": "bg-[#c026d3]", "hex": "#c026d3"},
+    "cyan": {"badge": "bg-[#0891b2] text-white border-[#0e7490] font-semibold", "dot": "bg-[#0891b2]", "hex": "#0891b2"},
+    "yellow": {"badge": "bg-[#ca8a04] text-white border-[#a16207] font-semibold", "dot": "bg-[#ca8a04]", "hex": "#ca8a04"},
+    "orange": {"badge": "bg-[#ea580c] text-white border-[#c2410c] font-semibold", "dot": "bg-[#ea580c]", "hex": "#ea580c"},
+    "slate": {"badge": "bg-[#475569] text-white border-[#334155] font-semibold", "dot": "bg-[#475569]", "hex": "#475569"},
+    "gold": {"badge": "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-amber-950 border-amber-400 font-bold shadow-sm", "dot": "bg-amber-400", "hex": "#f59e0b"}
 }
 
 DEFAULT_TAGS = [
     {"id": "fan", "label": "Fan", "color": "sky", "is_default": True},
     {"id": "timewaster", "label": "Timewaster", "color": "rose", "is_default": True},
-    {"id": "spender", "label": "Spender", "color": "emerald", "is_default": True}
+    {"id": "spender", "label": "Spender", "color": "emerald", "is_default": True},
+    {"id": "dore", "label": "Doré VIP", "color": "gold", "is_default": True}
 ]
 
 def load_json(filepath):
@@ -103,10 +105,10 @@ def save_tags(tags):
     return save_json(TAGS_FILE, tags)
 
 def get_fan_status(state, user_id: str, tags_dict: dict):
-    tag_id = state.get("tag_id") or state.get("manual_status") or "fan"
-    if tag_id not in tags_dict:
-        tag_id = "fan"
-    tag = tags_dict.get(tag_id, tags_dict.get("fan"))
+    tag_id = state.get("tag_id") or state.get("manual_status")
+    if not tag_id or tag_id not in tags_dict:
+        return "", "", "", "", False
+    tag = tags_dict[tag_id]
     color = tag.get("color", "sky")
     cfg = COLOR_STYLES.get(color, COLOR_STYLES["sky"])
     return tag["id"], tag["label"], cfg["badge"], cfg["dot"], True
@@ -135,14 +137,6 @@ async def api_fans_handler(request):
         stats[t["id"]] = 0
 
     for uid, state in chat_states.items():
-        sc, sl, bs, dot, is_manual = get_fan_status(state, uid, tags_dict)
-        if sc in stats:
-            stats[sc] += 1
-        
-        p = presence.get(str(uid), {})
-        is_online = bool(p.get("online", False))
-        is_typing = bool(p.get("typing_until", 0) > now)
-
         # Extraire le dernier message pour la prévisualisation dans la barre latérale
         user_history = histories.get(str(uid), [])
         last_msg_snippet = ""
@@ -165,11 +159,26 @@ async def api_fans_handler(request):
             else:
                 last_msg_snippet = f"{prefix}Message"
 
-        # Règle stricte : si Miwa a envoyé le dernier message ou si marqué comme lu, JAMAIS non lu
-        if last_role == "assistant" or state.get("last_message_from") == "miwa" or state.get("is_read", False):
+        # Si masqué temporairement ("supprimé 1 fois") et aucun nouveau message reçu depuis
+        hidden_until = state.get("hidden_until_time", 0)
+        if hidden_until and last_msg_time <= hidden_until:
+            continue
+
+        p = presence.get(str(uid), {})
+        is_online = bool(p.get("online", False))
+        is_typing = bool(p.get("typing_until", 0) > now)
+
+        sc, sl, bs, dot, is_manual = get_fan_status(state, uid, tags_dict)
+        if sc in stats:
+            stats[sc] += 1
+
+        # Règle non lu : si le dernier message vient du fan et n'est pas marqué lu -> NON LU
+        if state.get("is_read", False) or state.get("last_message_from") == "miwa":
             is_unread = False
+        elif state.get("last_message_from") == "fan" or last_role == "user":
+            is_unread = True
         else:
-            is_unread = bool(state.get("last_message_from") == "fan" or last_role == "user")
+            is_unread = False
 
         if is_unread:
             stats["unread"] += 1
@@ -225,13 +234,13 @@ async def api_status_handler(request):
     if body.get("token", "") != DASHBOARD_PASSWORD:
         return web.json_response({"error": "Unauthorized"}, status=401)
     user_id = str(body.get("user_id", "")).strip()
-    tag_id = body.get("tag_id") or body.get("status_code", "fan")
+    tag_id = body.get("tag_id") if "tag_id" in body else body.get("status_code", "")
 
     chat_states = load_json(STATES_FILE)
     if user_id not in chat_states:
         chat_states[user_id] = {"sender_name": f"Fan {user_id}"}
-    chat_states[user_id]["tag_id"] = tag_id
-    chat_states[user_id]["manual_status"] = tag_id
+    chat_states[user_id]["tag_id"] = tag_id or ""
+    chat_states[user_id]["manual_status"] = tag_id or ""
     save_json(STATES_FILE, chat_states)
     return web.json_response({"ok": True})
 
@@ -429,6 +438,43 @@ async def api_save_payment_links_handler(request):
     if save_json(PAYMENT_LINKS_FILE, links):
         return web.json_response({"ok": True})
     return web.json_response({"error": "Erreur écriture"}, status=500)
+
+
+async def api_delete_chat_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    
+    user_id = str(body.get("user_id", "")).strip()
+    permanent = bool(body.get("permanent", False))
+    
+    if not user_id:
+        return web.json_response({"error": "user_id requis"}, status=400)
+        
+    chat_states = load_json(STATES_FILE)
+    histories = load_json(HISTORIES_FILE)
+    
+    if permanent:
+        if user_id in chat_states:
+            del chat_states[user_id]
+            save_json(STATES_FILE, chat_states)
+        if user_id in histories:
+            del histories[user_id]
+            save_json(HISTORIES_FILE, histories)
+        presence = load_json(USER_PRESENCE_FILE)
+        if user_id in presence:
+            del presence[user_id]
+            save_json(USER_PRESENCE_FILE, presence)
+        return web.json_response({"ok": True, "action": "permanent_deleted"})
+    else:
+        # Supprimer une seule fois (masquer jusqu'au prochain message)
+        if user_id in chat_states:
+            chat_states[user_id]["hidden_until_time"] = int(time.time())
+            save_json(STATES_FILE, chat_states)
+        return web.json_response({"ok": True, "action": "hidden_once"})
 
 async def api_mark_read_handler(request):
     try:
@@ -741,6 +787,7 @@ def make_app():
     app.router.add_post("/api/send", api_send_handler)
     app.router.add_post("/api/send-media", api_send_media_handler)
     app.router.add_post("/api/mark-read", api_mark_read_handler)
+    app.router.add_post("/api/chat/delete", api_delete_chat_handler)
     app.router.add_post("/api/suggest", api_suggest_handler)
     app.router.add_get("/api/payment-links", api_payment_links_handler)
     app.router.add_post("/api/payment-links", api_save_payment_links_handler)
