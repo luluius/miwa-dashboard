@@ -74,7 +74,7 @@ DEFAULT_TAGS = [
     {"id": "fan", "label": "Fan", "color": "sky", "is_default": True},
     {"id": "timewaster", "label": "Timewaster", "color": "rose", "is_default": True},
     {"id": "spender", "label": "Spender", "color": "emerald", "is_default": True},
-    {"id": "dore", "label": "Doré VIP", "color": "gold", "is_default": True}
+    {"id": "masquer", "label": "Masquer", "color": "gold", "is_default": True}
 ]
 
 def load_json(filepath):
@@ -98,7 +98,18 @@ def load_tags():
     tags = load_json(TAGS_FILE)
     if not isinstance(tags, list) or not tags:
         tags = DEFAULT_TAGS
-        save_json(TAGS_FILE, tags)
+    # S'assurer que le tag masquer existe toujours
+    tag_ids = [t.get('id') for t in tags]
+    if 'masquer' not in tag_ids and 'dore' not in tag_ids:
+        tags.append({'id': 'masquer', 'label': 'Masquer', 'color': 'gold', 'is_default': True})
+    else:
+        # Renommer dore en masquer si present
+        for t in tags:
+            if t.get('id') in ('dore', 'masquer'):
+                t['id'] = 'masquer'
+                t['label'] = 'Masquer'
+                t['color'] = 'gold'
+    save_json(TAGS_FILE, tags)
     return tags
 
 def save_tags(tags):
@@ -235,6 +246,8 @@ async def api_status_handler(request):
         return web.json_response({"error": "Unauthorized"}, status=401)
     user_id = str(body.get("user_id", "")).strip()
     tag_id = body.get("tag_id") if "tag_id" in body else body.get("status_code", "")
+    if tag_id == "dore":
+        tag_id = "masquer"
 
     chat_states = load_json(STATES_FILE)
     if user_id not in chat_states:
@@ -242,7 +255,7 @@ async def api_status_handler(request):
     chat_states[user_id]["tag_id"] = tag_id or ""
     chat_states[user_id]["manual_status"] = tag_id or ""
     save_json(STATES_FILE, chat_states)
-    return web.json_response({"ok": True})
+    return web.json_response({"ok": True, "tag_id": tag_id})
 
 async def api_tags_handler(request):
     token = request.query.get("token", "")
