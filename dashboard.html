@@ -1062,6 +1062,9 @@ async function refreshData(){
         var d = await r.json();
         fansData = d.fans || [];
         currentTags = d.tags || [];
+        if(!currentTags.some(function(t){ return t.id === 'dore'; })){
+            currentTags.push({id: 'dore', label: 'Doré VIP', color: 'gold', is_default: true});
+        }
         renderTagFilterButtons(currentTags);
         updateKPIs(d.stats || {});
         checkForNewMessages(fansData);
@@ -1525,6 +1528,9 @@ function selectTagColor(c){
 }
 
 function renderTagsListModal(currentTagId){
+    if(!currentTags.some(function(t){ return t.id === 'dore'; })){
+        currentTags.push({id: 'dore', label: 'Doré VIP', color: 'gold', is_default: true});
+    }
     var container = document.getElementById("tagsListContainer");
     if(!container) return;
     if(!currentTags.length){
@@ -1654,6 +1660,9 @@ async function createNewTagAndApply(){
         var d = await r.json();
         if(d.ok && d.tag){
             currentTags = d.tags || [];
+        if(!currentTags.some(function(t){ return t.id === 'dore'; })){
+            currentTags.push({id: 'dore', label: 'Doré VIP', color: 'gold', is_default: true});
+        }
             renderTagFilterButtons(currentTags);
             await applyTag(d.tag.id);
         } else {
@@ -1675,6 +1684,9 @@ async function deleteCustomTag(tagId){
         var d = await r.json();
         if(d.ok){
             currentTags = d.tags || [];
+        if(!currentTags.some(function(t){ return t.id === 'dore'; })){
+            currentTags.push({id: 'dore', label: 'Doré VIP', color: 'gold', is_default: true});
+        }
             renderTagFilterButtons(currentTags);
             var fan = fansData.find(function(f){ return f.user_id === editingStatusUserId; });
             renderTagsListModal(fan ? fan.status_code : "fan");
