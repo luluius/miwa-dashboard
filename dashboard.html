@@ -3331,7 +3331,7 @@ function renderMassTagFilters() {
         var cls = isActive
             ? 'bg-purple-600 text-white font-bold shadow-xs'
             : 'bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0] font-medium';
-        return '<button type="button" onclick="selectMassTagFilter('' + t.id + '')" class="px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition ' + cls + '">' +
+        return '<button type="button" onclick="selectMassTagFilter(\'' + t.id + '\')" class="px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition ' + cls + '">' +
             t.label +
         '</button>';
     }).join('');
@@ -3371,7 +3371,7 @@ function renderMassFansList() {
         var tagLabel = f.status_label ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full ' + f.badge_style + '">' + f.status_label + '</span>' : '';
         return '<label class="flex items-center justify-between px-2.5 py-1.5 hover:bg-[#f8fafc] cursor-pointer text-xs select-none transition">' +
             '<div class="flex items-center gap-2 min-w-0">' +
-                '<input type="checkbox" ' + checked + ' onchange="toggleFanInMass('' + f.user_id + '', this.checked)" class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-gray-300">' +
+                '<input type="checkbox" ' + checked + ' onchange="toggleFanInMass(\'' + f.user_id + '\', this.checked)" class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-gray-300">' +
                 '<span class="font-medium text-[#1e293b] truncate">' + f.name + '</span>' +
             '</div>' +
             '<div class="flex items-center gap-1.5 shrink-0">' +
