@@ -252,49 +252,99 @@
     </button>
 </div>
 
-<!-- Modale Mass Message -->
-<div id="massMessageModal" style="display:none;" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closeMassMessageModal()">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div class="bg-gradient-to-r from-[#7c3aed] to-[#6d28d9] px-5 py-4 flex items-center justify-between">
+<!-- Modale Mass Message Avancée -->
+<div id="massMessageModal" style="display:none;" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4" onclick="if(event.target===this)closeMassMessageModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden animate-fadeIn">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-[#7c3aed] via-[#6d28d9] to-[#4f46e5] px-5 py-4 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
-                    <i class="fa-solid fa-bullhorn text-white text-base"></i>
+                <div class="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-xs">
+                    <i class="fa-solid fa-bullhorn text-sm"></i>
                 </div>
                 <div>
-                    <div class="text-white font-semibold text-sm">Message groupé</div>
-                    <div class="text-purple-200 text-[10px]">Envoyer à plusieurs fans</div>
+                    <div class="text-white font-bold text-sm tracking-tight">Message groupé (Mass DM)</div>
+                    <div class="text-purple-200 text-[11px]">Cible par étiquette & envoi avec photo</div>
                 </div>
             </div>
-            <button onclick="closeMassMessageModal()" class="text-white/70 hover:text-white text-lg leading-none">&times;</button>
+            <button onclick="closeMassMessageModal()" class="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/25 text-white/80 hover:text-white flex items-center justify-center text-sm transition">&times;</button>
         </div>
-        <div class="p-5 space-y-4">
-            <!-- Cible -->
+
+        <!-- Body défilable -->
+        <div class="p-5 overflow-y-auto space-y-4 flex-1">
+            <!-- 1. Filtrer et Cibler -->
             <div>
-                <label class="text-xs font-semibold text-[#0f172a] block mb-2">Envoyer à :</label>
-                <div class="flex flex-wrap gap-2">
-                    <button onclick="setMassTarget('all')" id="massTargetAll" class="mass-target-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#7c3aed] text-white border border-[#7c3aed]">Tous les fans</button>
-                    <button onclick="setMassTarget('unread')" id="massTargetUnread" class="mass-target-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]">Non lus seulement</button>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-bold text-[#0f172a] uppercase tracking-wider text-[11px]">1. Sélection des destinataires</label>
+                    <span id="massSelectedCountBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">0 sélectionné(s)</span>
+                </div>
+                
+                <!-- Boutons de filtre rapide par étiquette -->
+                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 mb-2.5" id="massTagFiltersBar">
+                    <!-- Rempli dynamiquement -->
+                </div>
+
+                <!-- Liste de sélection individuelle des fans -->
+                <div class="border border-[#e2e8f0] rounded-xl overflow-hidden bg-[#f8fafc]">
+                    <div class="px-3 py-2 bg-[#f1f5f9] border-b border-[#e2e8f0] flex items-center justify-between text-xs">
+                        <label class="flex items-center gap-2 cursor-pointer font-medium text-[#334155]">
+                            <input type="checkbox" id="massSelectAllCheckbox" onchange="toggleMassSelectAll(this.checked)" class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-gray-300">
+                            <span>Tout sélectionner (<span id="massTotalVisibleCount">0</span>)</span>
+                        </label>
+                        <button type="button" onclick="clearMassSelection()" class="text-[11px] text-purple-600 hover:text-purple-800 font-semibold hover:underline">Décocher tout</button>
+                    </div>
+                    <div id="massFansChecklist" class="max-h-36 overflow-y-auto divide-y divide-[#f1f5f9] p-1 bg-white">
+                        <!-- Fans list with checkboxes -->
+                    </div>
                 </div>
             </div>
-            <!-- Message -->
+
+            <!-- 2. Message texte (avec bouton Coller direct) -->
             <div>
-                <label class="text-xs font-semibold text-[#0f172a] block mb-2">Message :</label>
-                <textarea id="massMessageText" rows="4" placeholder="Écris ton message ici… 💕" class="w-full px-3 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#7c3aed] resize-none transition"></textarea>
-            </div>
-            <!-- Info -->
-            <div id="massMessageInfo" class="text-[11px] text-[#64748b]">0 fan(s) sélectionné(s)</div>
-            <!-- Progress -->
-            <div id="massMessageProgress" class="hidden">
-                <div class="h-2 bg-[#f1f5f9] rounded-full overflow-hidden">
-                    <div id="massProgressBar" class="h-full bg-[#7c3aed] transition-all duration-300" style="width:0%"></div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label class="text-xs font-bold text-[#0f172a] uppercase tracking-wider text-[11px]">2. Message texte</label>
+                    <button type="button" onclick="pasteDirectToMassText()" class="px-2.5 py-1 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-purple-700 text-[11px] font-semibold flex items-center gap-1.5 transition border border-purple-200 shadow-2xs">
+                        <i class="fa-regular fa-paste"></i> Coller du presse-papier
+                    </button>
                 </div>
-                <div id="massProgressText" class="text-[11px] text-[#64748b] mt-1 text-center">Envoi en cours…</div>
+                <textarea id="massMessageText" rows="3" placeholder="Écris ou colle ton message ici… 💕" class="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white resize-none transition"></textarea>
+            </div>
+
+            <!-- 3. Photo ou Image attachée (optionnel) -->
+            <div>
+                <label class="text-xs font-bold text-[#0f172a] uppercase tracking-wider text-[11px] block mb-1.5">3. Image / Photo (optionnel)</label>
+                <div class="flex items-center gap-3">
+                    <input type="file" id="massImageInput" accept="image/*" onchange="handleMassImageSelected(this)" class="hidden">
+                    <button type="button" onclick="document.getElementById('massImageInput').click()" class="px-3.5 py-2 rounded-xl border border-dashed border-purple-300 hover:border-purple-500 bg-purple-50/50 hover:bg-purple-100/50 text-purple-700 text-xs font-medium flex items-center gap-2 transition cursor-pointer">
+                        <i class="fa-regular fa-image text-sm"></i>
+                        <span>Choisir une photo</span>
+                    </button>
+                    <!-- Aperçu miniature de l'image -->
+                    <div id="massImagePreviewContainer" class="hidden flex items-center gap-2 bg-[#f1f5f9] px-2.5 py-1.5 rounded-xl border border-[#e2e8f0]">
+                        <img id="massImagePreview" src="" class="w-8 h-8 rounded-lg object-cover border border-white shadow-xs">
+                        <span id="massImageName" class="text-[11px] text-[#334155] max-w-[120px] truncate font-medium">photo.jpg</span>
+                        <button type="button" onclick="clearMassImage()" class="text-[#94a3b8] hover:text-red-500 text-xs p-1">&times;</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progression de l'envoi -->
+            <div id="massMessageProgress" class="hidden space-y-1.5 bg-purple-50 border border-purple-200 p-3 rounded-xl">
+                <div class="flex items-center justify-between text-[11px] font-semibold text-purple-900">
+                    <span id="massProgressText">Envoi en cours…</span>
+                    <span id="massProgressPercent">0%</span>
+                </div>
+                <div class="h-2.5 bg-purple-200 rounded-full overflow-hidden">
+                    <div id="massProgressBar" class="h-full bg-gradient-to-r from-purple-500 to-indigo-600 transition-all duration-300" style="width:0%"></div>
+                </div>
             </div>
         </div>
-        <div class="px-5 pb-5 flex gap-2">
-            <button onclick="closeMassMessageModal()" class="flex-1 py-2 bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#475569] text-sm font-medium rounded-xl transition">Annuler</button>
-            <button onclick="sendMassMessage()" id="massSendBtn" class="flex-1 py-2 bg-[#7c3aed] hover:bg-[#6d28d9] text-white text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-paper-plane text-xs"></i> Envoyer
+
+        <!-- Footer -->
+        <div class="px-5 py-3.5 bg-[#f8fafc] border-t border-[#e2e8f0] flex items-center justify-between gap-3 shrink-0">
+            <button onclick="closeMassMessageModal()" class="px-4 py-2 bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] text-[#475569] text-xs font-semibold rounded-xl transition">Annuler</button>
+            <button onclick="sendMassMessage()" id="massSendBtn" class="px-5 py-2.5 bg-gradient-to-r from-[#7c3aed] to-[#6d28d9] hover:from-[#6d28d9] hover:to-[#5b21b6] text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa-solid fa-paper-plane text-xs"></i>
+                <span>Envoyer le message groupé</span>
             </button>
         </div>
     </div>
@@ -3215,12 +3265,27 @@ function closeFanInfoModal() {
 }
 
 
-// ── MASS MESSAGE ────────────────────────────────────────────────────────────
-var massTarget = 'all';
+// ── MASS MESSAGE AVANCÉ ─────────────────────────────────────────────────────
+var massActiveFilter = 'all';
+var massSelectedUids = new Set();
+var massImageBase64 = null;
+var massImageFilename = '';
 
 function openMassMessageModal() {
-    massTarget = 'all';
-    setMassTarget('all');
+    massActiveFilter = 'all';
+    massImageBase64 = null;
+    massImageFilename = '';
+    clearMassImage();
+
+    // Initialiser la sélection avec tous les fans non-masqués
+    massSelectedUids.clear();
+    var available = fansData.filter(function(f){ return !isGoldFan(f); });
+    available.forEach(function(f){ massSelectedUids.add(f.user_id); });
+
+    renderMassTagFilters();
+    renderMassFansList();
+    updateMassSelectedCount();
+
     document.getElementById('massMessageText').value = '';
     document.getElementById('massMessageProgress').classList.add('hidden');
     document.getElementById('massSendBtn').disabled = false;
@@ -3231,44 +3296,206 @@ function closeMassMessageModal() {
     document.getElementById('massMessageModal').style.display = 'none';
 }
 
-function setMassTarget(target) {
-    massTarget = target;
-    var activeClass = 'bg-[#7c3aed] text-white border-[#7c3aed]';
-    var inactiveClass = 'bg-[#f1f5f9] text-[#475569] border-[#e2e8f0]';
-    document.getElementById('massTargetAll').className = 'mass-target-btn px-3 py-1.5 rounded-lg text-xs font-medium ' + (target==='all'?activeClass:inactiveClass);
-    document.getElementById('massTargetUnread').className = 'mass-target-btn px-3 py-1.5 rounded-lg text-xs font-medium ' + (target==='unread'?activeClass:inactiveClass);
-    var fans = massTarget === 'all' ? fansData : fansData.filter(function(f){ return f.is_unread; });
-    document.getElementById('massMessageInfo').innerText = fans.length + ' fan(s) sélectionné(s)';
+// Coller direct depuis le presse-papier
+async function pasteDirectToMassText() {
+    var ta = document.getElementById('massMessageText');
+    try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            var clip = await navigator.clipboard.readText();
+            if (clip) {
+                ta.value = clip;
+                ta.focus();
+                return;
+            }
+        }
+    } catch(e) {}
+    var fallback = prompt('Colle ton message ici :');
+    if (fallback !== null && fallback !== undefined) {
+        ta.value = fallback;
+        ta.focus();
+    }
 }
 
+// Rendu des filtres par étiquette dans la modale
+function renderMassTagFilters() {
+    var bar = document.getElementById('massTagFiltersBar');
+    if (!bar) return;
+
+    var tags = [{ id: 'all', label: 'Tous' }, { id: 'unread', label: 'Non lus' }];
+    currentTags.forEach(function(t){
+        tags.push({ id: t.id, label: t.label, color: t.color });
+    });
+
+    bar.innerHTML = tags.map(function(t){
+        var isActive = massActiveFilter === t.id;
+        var cls = isActive
+            ? 'bg-purple-600 text-white font-bold shadow-xs'
+            : 'bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0] font-medium';
+        return '<button type="button" onclick="selectMassTagFilter('' + t.id + '')" class="px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition ' + cls + '">' +
+            t.label +
+        '</button>';
+    }).join('');
+}
+
+function selectMassTagFilter(filterId) {
+    massActiveFilter = filterId;
+    renderMassTagFilters();
+    renderMassFansList();
+}
+
+function getFilteredFansForMass() {
+    return fansData.filter(function(f){
+        if (massActiveFilter === 'all') return !isGoldFan(f);
+        if (massActiveFilter === 'unread') return !isGoldFan(f) && f.is_unread;
+        return f.status_code === massActiveFilter;
+    });
+}
+
+function renderMassFansList() {
+    var list = document.getElementById('massFansChecklist');
+    if (!list) return;
+
+    var filtered = getFilteredFansForMass();
+    document.getElementById('massTotalVisibleCount').innerText = filtered.length;
+
+    var allChecked = filtered.length > 0 && filtered.every(function(f){ return massSelectedUids.has(f.user_id); });
+    document.getElementById('massSelectAllCheckbox').checked = allChecked;
+
+    if (!filtered.length) {
+        list.innerHTML = '<div class="p-4 text-center text-xs text-[#94a3b8] italic">Aucun fan pour ce filtre</div>';
+        return;
+    }
+
+    list.innerHTML = filtered.map(function(f){
+        var checked = massSelectedUids.has(f.user_id) ? 'checked' : '';
+        var tagLabel = f.status_label ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full ' + f.badge_style + '">' + f.status_label + '</span>' : '';
+        return '<label class="flex items-center justify-between px-2.5 py-1.5 hover:bg-[#f8fafc] cursor-pointer text-xs select-none transition">' +
+            '<div class="flex items-center gap-2 min-w-0">' +
+                '<input type="checkbox" ' + checked + ' onchange="toggleFanInMass('' + f.user_id + '', this.checked)" class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-gray-300">' +
+                '<span class="font-medium text-[#1e293b] truncate">' + f.name + '</span>' +
+            '</div>' +
+            '<div class="flex items-center gap-1.5 shrink-0">' +
+                (f.is_unread ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-600" title="Non lu"></span>' : '') +
+                tagLabel +
+            '</div>' +
+        '</label>';
+    }).join('');
+}
+
+function toggleFanInMass(uid, isChecked) {
+    if (isChecked) massSelectedUids.add(uid);
+    else massSelectedUids.delete(uid);
+    updateMassSelectedCount();
+    var filtered = getFilteredFansForMass();
+    var allChecked = filtered.length > 0 && filtered.every(function(f){ return massSelectedUids.has(f.user_id); });
+    document.getElementById('massSelectAllCheckbox').checked = allChecked;
+}
+
+function toggleMassSelectAll(isChecked) {
+    var filtered = getFilteredFansForMass();
+    filtered.forEach(function(f){
+        if (isChecked) massSelectedUids.add(f.user_id);
+        else massSelectedUids.delete(f.user_id);
+    });
+    renderMassFansList();
+    updateMassSelectedCount();
+}
+
+function clearMassSelection() {
+    massSelectedUids.clear();
+    renderMassFansList();
+    updateMassSelectedCount();
+}
+
+function updateMassSelectedCount() {
+    var badge = document.getElementById('massSelectedCountBadge');
+    if (badge) badge.innerText = massSelectedUids.size + ' sélectionné(s)';
+}
+
+// Gestion de la photo attachée
+function handleMassImageSelected(input) {
+    if (!input.files || !input.files[0]) return;
+    var file = input.files[0];
+    massImageFilename = file.name;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        massImageBase64 = e.target.result;
+        document.getElementById('massImagePreview').src = massImageBase64;
+        document.getElementById('massImageName').innerText = file.name;
+        document.getElementById('massImagePreviewContainer').classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearMassImage() {
+    massImageBase64 = null;
+    massImageFilename = '';
+    var inp = document.getElementById('massImageInput');
+    if (inp) inp.value = '';
+    var container = document.getElementById('massImagePreviewContainer');
+    if (container) container.classList.add('hidden');
+}
+
+// Envoi groupé texte + photo éventuelle
 async function sendMassMessage() {
     var text = document.getElementById('massMessageText').value.trim();
-    if (!text) { alert('Écris un message d\'abord !'); return; }
-    var fans = massTarget === 'all' ? fansData : fansData.filter(function(f){ return f.is_unread; });
-    if (fans.length === 0) { alert('Aucun fan dans cette sélection.'); return; }
-    if (!confirm('Envoyer ce message à ' + fans.length + ' fan(s) ?')) return;
-    document.getElementById('massSendBtn').disabled = true;
+    if (!text && !massImageBase64) {
+        alert('Écris un message ou sélectionne une photo !');
+        return;
+    }
+    var targetUids = Array.from(massSelectedUids);
+    if (targetUids.length === 0) {
+        alert('Sélectionne au moins un fan !');
+        return;
+    }
+
+    var confirmMsg = 'Envoyer ce message à ' + targetUids.length + ' fan(s) ?';
+    if (massImageBase64) confirmMsg = 'Envoyer ce message AVEC la photo à ' + targetUids.length + ' fan(s) ?';
+    if (!confirm(confirmMsg)) return;
+
+    var sendBtn = document.getElementById('massSendBtn');
+    sendBtn.disabled = true;
     document.getElementById('massMessageProgress').classList.remove('hidden');
     var bar = document.getElementById('massProgressBar');
     var txt = document.getElementById('massProgressText');
+    var pct = document.getElementById('massProgressPercent');
+
     var success = 0, errors = 0;
-    for (var i = 0; i < fans.length; i++) {
-        var fan = fans[i];
-        txt.innerText = 'Envoi à ' + fan.name + '… (' + (i+1) + '/' + fans.length + ')';
-        bar.style.width = Math.round(((i+1)/fans.length)*100) + '%';
+    for (var i = 0; i < targetUids.length; i++) {
+        var uid = targetUids[i];
+        var fan = fansData.find(function(f){ return f.user_id === uid; });
+        var name = fan ? fan.name : uid;
+        var pVal = Math.round(((i + 1) / targetUids.length) * 100);
+
+        txt.innerText = 'Envoi à ' + name + '… (' + (i + 1) + '/' + targetUids.length + ')';
+        pct.innerText = pVal + '%';
+        bar.style.width = pVal + '%';
+
         try {
-            var r = await fetch('/api/send', {
+            var url = massImageBase64 ? '/api/send-media' : '/api/send';
+            var payload = massImageBase64
+                ? { token: authToken, user_id: uid, image_b64: massImageBase64, message: text, filename: massImageFilename }
+                : { token: authToken, user_id: uid, message: text };
+
+            var r = await fetch(url, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({token: authToken, user_id: fan.user_id, message: text})
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
             if (r.ok) success++; else errors++;
-        } catch(e) { errors++; }
-        await new Promise(function(res){ setTimeout(res, 400); });
+        } catch(e) {
+            errors++;
+        }
+        await new Promise(function(res){ setTimeout(res, 350); });
     }
+
     txt.innerText = '✅ ' + success + ' envoyé(s)' + (errors > 0 ? ', ❌ ' + errors + ' erreur(s)' : '');
     bar.style.width = '100%';
-    setTimeout(function(){ closeMassMessageModal(); }, 2500);
+    pct.innerText = '100%';
+    setTimeout(function(){
+        closeMassMessageModal();
+        refreshData();
+    }, 2000);
 }
 
 // ── TRADUCTION AUTO ─────────────────────────────────────────────────────────
