@@ -206,9 +206,11 @@ async def api_fans_handler(request):
         if followup_date:
             stats["followup"] += 1
 
+        is_blocked = bool(state.get("is_blocked", False))
         fans.append({
             "user_id": uid,
             "name": state.get("sender_name") or f"Fan {uid}",
+            "is_blocked": is_blocked,
             "message_count": state.get("message_count", 0),
             "last_message_time": last_msg_time,
             "last_message": last_msg_snippet,
@@ -451,6 +453,52 @@ async def api_save_payment_links_handler(request):
     if save_json(PAYMENT_LINKS_FILE, links):
         return web.json_response({"ok": True})
     return web.json_response({"error": "Erreur écriture"}, status=500)
+
+
+async def api_bulk_action_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    
+    action = str(body.get("action", "")).strip() # 'delete' or 'block' or 'unblock'
+    user_ids = body.get("user_ids", [])
+    if not isinstance(user_ids, list) or not user_ids:
+        return web.json_response({"error": "user_ids liste requise"}, status=400)
+
+    chat_states = load_json(STATES_FILE)
+    histories = load_json(HISTORIES_FILE)
+    presence = load_json(USER_PRESENCE_FILE)
+
+    count = 0
+    if action == "delete":
+        for uid in user_ids:
+            uid_str = str(uid).strip()
+            if uid_str in chat_states:
+                del chat_states[uid_str]
+                count += 1
+            if uid_str in histories:
+                del histories[uid_str]
+            if uid_str in presence:
+                del presence[uid_str]
+        save_json(STATES_FILE, chat_states)
+        save_json(HISTORIES_FILE, histories)
+        save_json(USER_PRESENCE_FILE, presence)
+        return web.json_response({"ok": True, "action": "delete", "count": count})
+
+    elif action in ("block", "unblock"):
+        is_blk = (action == "block")
+        for uid in user_ids:
+            uid_str = str(uid).strip()
+            if uid_str in chat_states:
+                chat_states[uid_str]["is_blocked"] = is_blk
+                count += 1
+        save_json(STATES_FILE, chat_states)
+        return web.json_response({"ok": True, "action": action, "count": count})
+
+    return web.json_response({"error": "Action inconnue (delete, block, unblock)"}, status=400)
 
 
 async def api_delete_chat_handler(request):
@@ -801,6 +849,7 @@ def make_app():
     app.router.add_post("/api/send-media", api_send_media_handler)
     app.router.add_post("/api/mark-read", api_mark_read_handler)
     app.router.add_post("/api/chat/delete", api_delete_chat_handler)
+    app.router.add_post("/api/fans/bulk", api_bulk_action_handler)
     app.router.add_post("/api/suggest", api_suggest_handler)
     app.router.add_get("/api/payment-links", api_payment_links_handler)
     app.router.add_post("/api/payment-links", api_save_payment_links_handler)
