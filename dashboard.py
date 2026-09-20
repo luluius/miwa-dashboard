@@ -24,8 +24,10 @@ RATES_RULES_FILE = os.path.join(BASE_DIR, "rates_rules.json")
 MEDIA_DIR = os.path.join(BASE_DIR, "media")
 VAULT_DIR = os.path.join(BASE_DIR, "vault")
 USER_PRESENCE_FILE = os.path.join(BASE_DIR, "user_presence.json")
+BACKUP_DIR = os.path.join(BASE_DIR, "backups")
 os.makedirs(MEDIA_DIR, exist_ok=True)
 os.makedirs(VAULT_DIR, exist_ok=True)
+os.makedirs(BACKUP_DIR, exist_ok=True)
 
 DEFAULT_RATES_RULES = {
     "rates": [
@@ -93,6 +95,25 @@ def save_json(filepath, data):
         return True
     except Exception:
         return False
+
+def create_backup(label="bulk"):
+    """Sauvegarde chat_states + conversation_histories avant une action destructive."""
+    import datetime
+    ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    backup_name = f"{ts}_{label}"
+    backup_path = os.path.join(BACKUP_DIR, backup_name)
+    os.makedirs(backup_path, exist_ok=True)
+    try:
+        import shutil
+        if os.path.exists(STATES_FILE):
+            shutil.copy2(STATES_FILE, os.path.join(backup_path, "chat_states.json"))
+        if os.path.exists(HISTORIES_FILE):
+            shutil.copy2(HISTORIES_FILE, os.path.join(backup_path, "conversation_histories.json"))
+        if os.path.exists(USER_PRESENCE_FILE):
+            shutil.copy2(USER_PRESENCE_FILE, os.path.join(backup_path, "user_presence.json"))
+        return backup_name
+    except Exception as e:
+        return None
 
 def load_tags():
     tags = load_json(TAGS_FILE)
@@ -472,6 +493,9 @@ async def api_bulk_action_handler(request):
     histories = load_json(HISTORIES_FILE)
     presence = load_json(USER_PRESENCE_FILE)
 
+    # ── Sauvegarde automatique avant toute action destructive ──
+    backup_name = create_backup(label=action)
+
     count = 0
     if action == "delete":
         for uid in user_ids:
@@ -486,7 +510,7 @@ async def api_bulk_action_handler(request):
         save_json(STATES_FILE, chat_states)
         save_json(HISTORIES_FILE, histories)
         save_json(USER_PRESENCE_FILE, presence)
-        return web.json_response({"ok": True, "action": "delete", "count": count})
+        return web.json_response({"ok": True, "action": "delete", "count": count, "backup": backup_name})
 
     elif action in ("block", "unblock"):
         is_blk = (action == "block")
@@ -496,7 +520,7 @@ async def api_bulk_action_handler(request):
                 chat_states[uid_str]["is_blocked"] = is_blk
                 count += 1
         save_json(STATES_FILE, chat_states)
-        return web.json_response({"ok": True, "action": action, "count": count})
+        return web.json_response({"ok": True, "action": action, "count": count, "backup": backup_name})
 
     return web.json_response({"error": "Action inconnue (delete, block, unblock)"}, status=400)
 
@@ -832,6 +856,58 @@ async def api_rates_rules_save_handler(request):
         return web.json_response({"ok": True})
     return web.json_response({"error": "Erreur écriture"}, status=500)
 
+async def api_backups_list_handler(request):
+    """Lister les sauvegardes disponibles."""
+    if request.rel_url.query.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    backups = []
+    if os.path.exists(BACKUP_DIR):
+        for name in sorted(os.listdir(BACKUP_DIR), reverse=True)[:20]:
+            bp = os.path.join(BACKUP_DIR, name)
+            if os.path.isdir(bp):
+                states_path = os.path.join(bp, "chat_states.json")
+                count = 0
+                if os.path.exists(states_path):
+                    try:
+                        with open(states_path, "r", encoding="utf-8") as f:
+                            count = len(json.load(f))
+                    except Exception:
+                        pass
+                backups.append({"name": name, "fan_count": count})
+    return web.json_response({"ok": True, "backups": backups})
+
+
+async def api_backups_restore_handler(request):
+    """Restaurer une sauvegarde."""
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    backup_name = str(body.get("backup_name", "")).strip()
+    if not backup_name:
+        return web.json_response({"error": "backup_name requis"}, status=400)
+    backup_path = os.path.join(BACKUP_DIR, backup_name)
+    if not os.path.isdir(backup_path):
+        return web.json_response({"error": "Sauvegarde introuvable"}, status=404)
+    try:
+        import shutil
+        restored = []
+        for fname, dest in [
+            ("chat_states.json", STATES_FILE),
+            ("conversation_histories.json", HISTORIES_FILE),
+            ("user_presence.json", USER_PRESENCE_FILE),
+        ]:
+            src = os.path.join(backup_path, fname)
+            if os.path.exists(src):
+                shutil.copy2(src, dest)
+                restored.append(fname)
+        return web.json_response({"ok": True, "restored": restored, "backup": backup_name})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
 def make_app():
     # 100 Mo max pour supporter l'envoi de photos et vidéos sans erreur 413
     app = web.Application(client_max_size=100 * 1024 * 1024)
@@ -850,6 +926,8 @@ def make_app():
     app.router.add_post("/api/mark-read", api_mark_read_handler)
     app.router.add_post("/api/chat/delete", api_delete_chat_handler)
     app.router.add_post("/api/fans/bulk", api_bulk_action_handler)
+    app.router.add_get("/api/backups", api_backups_list_handler)
+    app.router.add_post("/api/backups/restore", api_backups_restore_handler)
     app.router.add_post("/api/suggest", api_suggest_handler)
     app.router.add_get("/api/payment-links", api_payment_links_handler)
     app.router.add_post("/api/payment-links", api_save_payment_links_handler)
