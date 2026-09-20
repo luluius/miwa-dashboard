@@ -3418,12 +3418,6 @@ function renderBulkTagFilters() {
     }).join('');
 }
 
-function selectBulkTagFilter(filterId) {
-    bulkActiveFilter = filterId;
-    renderBulkTagFilters();
-    renderBulkFansList();
-}
-
 function getFilteredFansForBulk() {
     return fansData.filter(function(f){
         if (bulkActiveFilter === 'all') return true;
@@ -3439,7 +3433,7 @@ function renderBulkFansList() {
     var filtered = getFilteredFansForBulk();
     document.getElementById('bulkTotalVisibleCount').innerText = filtered.length;
 
-    var allChecked = filtered.length > 0 && filtered.every(function(f){ return bulkSelectedUids.has(f.user_id); });
+    var allChecked = filtered.length > 0 && filtered.every(function(f){ return bulkSelectedUids.has(String(f.user_id)); });
     document.getElementById('bulkSelectAllCheckbox').checked = allChecked;
 
     if (!filtered.length) {
@@ -3448,12 +3442,13 @@ function renderBulkFansList() {
     }
 
     list.innerHTML = filtered.map(function(f){
-        var checked = bulkSelectedUids.has(f.user_id) ? 'checked' : '';
+        var uid = String(f.user_id);
+        var checked = bulkSelectedUids.has(uid) ? 'checked' : '';
         var tagLabel = f.status_label ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full ' + f.badge_style + '">' + f.status_label + '</span>' : '';
         var blkBadge = f.is_blocked ? '<span class="text-[9px] px-1 py-0.5 rounded bg-red-100 text-red-700 font-bold">Bloqué</span>' : '';
         return '<label class="flex items-center justify-between px-2.5 py-1.5 hover:bg-[#f8fafc] cursor-pointer text-xs select-none transition">' +
             '<div class="flex items-center gap-2 min-w-0">' +
-                '<input type="checkbox" ' + checked + ' onchange="toggleFanInBulk(' + f.user_id + ', this.checked)" class="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-gray-300">' +
+                '<input type="checkbox" ' + checked + ' onchange="toggleFanInBulk(\'' + uid + '\', this.checked)" class="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-gray-300">' +
                 '<span class="font-medium text-[#1e293b] truncate">' + f.name + '</span>' +
             '</div>' +
             '<div class="flex items-center gap-1.5 shrink-0">' +
@@ -3465,20 +3460,36 @@ function renderBulkFansList() {
 }
 
 function toggleFanInBulk(uid, isChecked) {
+    uid = String(uid);
     if (isChecked) bulkSelectedUids.add(uid);
     else bulkSelectedUids.delete(uid);
     updateBulkSelectedCount();
     var filtered = getFilteredFansForBulk();
-    var allChecked = filtered.length > 0 && filtered.every(function(f){ return bulkSelectedUids.has(f.user_id); });
+    var allChecked = filtered.length > 0 && filtered.every(function(f){ return bulkSelectedUids.has(String(f.user_id)); });
     document.getElementById('bulkSelectAllCheckbox').checked = allChecked;
 }
 
 function toggleBulkSelectAll(isChecked) {
     var filtered = getFilteredFansForBulk();
     filtered.forEach(function(f){
-        if (isChecked) bulkSelectedUids.add(f.user_id);
-        else bulkSelectedUids.delete(f.user_id);
+        if (isChecked) bulkSelectedUids.add(String(f.user_id));
+        else bulkSelectedUids.delete(String(f.user_id));
     });
+    renderBulkFansList();
+    updateBulkSelectedCount();
+}
+
+function selectBulkTagFilter(filterId) {
+    bulkActiveFilter = filterId;
+    // Auto-sélectionner tous les fans du filtre choisi
+    bulkSelectedUids.clear();
+    var filtered = fansData.filter(function(f){
+        if (filterId === 'all') return true;
+        if (filterId === 'unread') return f.is_unread;
+        return f.status_code === filterId;
+    });
+    filtered.forEach(function(f){ bulkSelectedUids.add(String(f.user_id)); });
+    renderBulkTagFilters();
     renderBulkFansList();
     updateBulkSelectedCount();
 }
