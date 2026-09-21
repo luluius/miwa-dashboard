@@ -433,18 +433,19 @@ async def api_send_handler(request):
     user_state = chat_states.get(user_id, {}) if isinstance(chat_states, dict) else {}
     target_lang = user_state.get("language", "fr")
 
+    # Traduction sortante désactivée — les messages partent tels quels en français
     import gemini_client
     actual_telegram_message = message
     sent_content = None
 
-    if target_lang and target_lang != "fr":
-        try:
-            translated = await gemini_client.gemini_client.translate_to_language(message, target_lang)
-            if translated and translated.strip():
-                actual_telegram_message = translated.strip()
-                sent_content = actual_telegram_message
-        except Exception as e:
-            print(f"Erreur traduction sortante: {e}")
+    # if target_lang and target_lang != "fr":
+    #     try:
+    #         translated = await gemini_client.gemini_client.translate_to_language(message, target_lang)
+    #         if translated and translated.strip():
+    #             actual_telegram_message = translated.strip()
+    #             sent_content = actual_telegram_message
+    #     except Exception as e:
+    #         print(f"Erreur traduction sortante: {e}")
 
     now_ts = time.time()
     hist_client = gemini_client.MiwaGeminiClient(history_file=paths["histories"])
