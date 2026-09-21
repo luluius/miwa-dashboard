@@ -8,6 +8,17 @@ import time
 import re
 from aiohttp import web
 
+# Import optionnel de Telethon pour le flow de connexion Telegram
+try:
+    from telethon import TelegramClient
+    from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneCodeExpiredError
+    TELETHON_AVAILABLE = True
+except ImportError:
+    TELETHON_AVAILABLE = False
+
+# Sessions Telegram en cours d'authentification { account_id: {client, phone, phone_code_hash} }
+_pending_tg_auth = {}
+
 DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "miwa2026")
 PORT = int(os.getenv("DASHBOARD_PORT", "8080"))
 
@@ -1054,6 +1065,117 @@ async def api_accounts_delete_handler(request):
     save_json(ACCOUNTS_FILE, accs)
     return web.json_response({"ok": True, "accounts": accs})
 
+async def api_accounts_connect_handler(request):
+    """Étape 1 : envoie le code SMS pour connecter un nouveau compte Telegram."""
+    if not TELETHON_AVAILABLE:
+        return web.json_response({"error": "Telethon non installé sur le serveur"}, status=500)
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "JSON invalide"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    account_id = body.get("account_id", "").strip()
+    phone = body.get("phone", "").strip()
+    if not account_id or not phone:
+        return web.json_response({"error": "account_id et phone requis"}, status=400)
+    if account_id == "default":
+        return web.json_response({"error": "Impossible de modifier le compte principal"}, status=400)
+
+    api_id = int(os.getenv("API_ID", "0"))
+    api_hash = os.getenv("API_HASH", "")
+    if not api_id or not api_hash:
+        return web.json_response({"error": "API_ID / API_HASH non configurés sur le serveur"}, status=500)
+
+    # Si une session est déjà en cours pour ce compte, la fermer proprement
+    if account_id in _pending_tg_auth:
+        try:
+            await _pending_tg_auth[account_id]["client"].disconnect()
+        except Exception:
+            pass
+        del _pending_tg_auth[account_id]
+
+    session_file = os.path.join(BASE_DIR, f"miwa_personal_session_{account_id}")
+    client = TelegramClient(session_file, api_id, api_hash)
+    try:
+        await client.connect()
+        result = await client.send_code_request(phone)
+    except Exception as e:
+        await client.disconnect()
+        return web.json_response({"error": f"Erreur Telegram : {str(e)}"}, status=500)
+
+    _pending_tg_auth[account_id] = {
+        "client": client,
+        "phone": phone,
+        "phone_code_hash": result.phone_code_hash,
+    }
+
+    # Sauvegarder le numéro de tel dans accounts.json
+    accs = load_accounts()
+    for a in accs:
+        if a["id"] == account_id:
+            a["phone"] = phone
+            break
+    save_json(ACCOUNTS_FILE, accs)
+
+    return web.json_response({"ok": True, "message": f"Code envoyé au {phone}"})
+
+
+async def api_accounts_verify_handler(request):
+    """Étape 2 : vérifie le code OTP (et optionnellement le mot de passe 2FA)."""
+    if not TELETHON_AVAILABLE:
+        return web.json_response({"error": "Telethon non installé"}, status=500)
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "JSON invalide"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    account_id = body.get("account_id", "").strip()
+    code = body.get("code", "").strip()
+    password = body.get("password", "").strip()  # 2FA optionnel
+
+    if account_id not in _pending_tg_auth:
+        return web.json_response({"error": "Session expirée, recommence depuis le début"}, status=400)
+
+    pending = _pending_tg_auth[account_id]
+    client = pending["client"]
+    phone = pending["phone"]
+    phone_code_hash = pending["phone_code_hash"]
+
+    try:
+        if password:
+            # Étape 2FA
+            await client.sign_in(password=password)
+        else:
+            await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
+
+        me = await client.get_me()
+        await client.disconnect()
+        del _pending_tg_auth[account_id]
+
+        # Marquer le compte comme connecté dans accounts.json
+        accs = load_accounts()
+        for a in accs:
+            if a["id"] == account_id:
+                a["connected"] = True
+                a["telegram_name"] = ((me.first_name or "") + " " + (me.last_name or "")).strip()
+                a["telegram_username"] = me.username or ""
+                break
+        save_json(ACCOUNTS_FILE, accs)
+
+        return web.json_response({"ok": True, "name": me.first_name or me.username or account_id})
+
+    except SessionPasswordNeededError:
+        return web.json_response({"ok": False, "need_2fa": True, "message": "Ce compte a une 2FA active, entre ton mot de passe Telegram"})
+    except (PhoneCodeInvalidError, PhoneCodeExpiredError):
+        return web.json_response({"ok": False, "error": "Code invalide ou expiré"}, status=400)
+    except Exception as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=400)
+
+
 def make_app():
     # 100 Mo max pour supporter l'envoi de photos et vidéos sans erreur 413
     app = web.Application(client_max_size=100 * 1024 * 1024)
@@ -1077,6 +1199,8 @@ def make_app():
     app.router.add_get("/api/accounts", api_accounts_list_handler)
     app.router.add_post("/api/accounts/create", api_accounts_create_handler)
     app.router.add_post("/api/accounts/delete", api_accounts_delete_handler)
+    app.router.add_post("/api/accounts/connect", api_accounts_connect_handler)
+    app.router.add_post("/api/accounts/verify", api_accounts_verify_handler)
     app.router.add_post("/api/suggest", api_suggest_handler)
     app.router.add_get("/api/payment-links", api_payment_links_handler)
     app.router.add_post("/api/payment-links", api_save_payment_links_handler)
