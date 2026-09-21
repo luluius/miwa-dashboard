@@ -23,6 +23,25 @@ DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "miwa2026")
 PORT = int(os.getenv("DASHBOARD_PORT", "8080"))
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Charger le .env manuellement si les variables ne sont pas dans l'environnement
+def _load_env_file():
+    env_path = os.path.join(BASE_DIR, ".env")
+    if not os.path.exists(env_path):
+        return
+    with open(env_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = val
+
+_load_env_file()
+
 ACCOUNTS_FILE = os.path.join(BASE_DIR, "accounts.json")
 HTML_FILE = os.path.join(BASE_DIR, "dashboard.html")
 PAYMENT_LINKS_FILE = os.path.join(BASE_DIR, "payment_links.json")
