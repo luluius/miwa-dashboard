@@ -492,21 +492,21 @@ async def on_private_message(event):
                 logger.warning(f"Erreur transcription vocal: {e}")
                 effective_message = f"{effective_message} [Message vocal]".strip()
 
-        # Détection langue et traduction automatique si langue étrangère
+        # Détection langue et traduction désactivées — les messages restent dans leur langue d'origine
         lang = "fr"
         translated_fr = ""
-        if effective_message:
-            try:
-                trans_info = await gemini_client.detect_and_translate(effective_message)
-                lang = trans_info.get("lang", "fr")
-                translated_fr = trans_info.get("translated", "")
-            except Exception as te:
-                logger.warning(f"Erreur détection langue: {te}")
+        # if effective_message:
+        #     try:
+        #         trans_info = await gemini_client.detect_and_translate(effective_message)
+        #         lang = trans_info.get("lang", "fr")
+        #         translated_fr = trans_info.get("translated", "")
+        #     except Exception as te:
+        #         logger.warning(f"Erreur détection langue: {te}")
 
         uid_str = str(user_id)
         now_ts = time.time()
-        final_content = translated_fr if (lang != "fr" and translated_fr) else effective_message
-        original_content = effective_message if (lang != "fr" and translated_fr) else None
+        final_content = effective_message  # pas de traduction
+        original_content = None
 
         # Mettre à jour l'historique de conversation
         gemini_client.add_message(
