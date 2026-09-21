@@ -1089,6 +1089,8 @@
 
 <script>
 let authToken = localStorage.getItem("miwa_auth_token") || "";
+let currentAccountId = localStorage.getItem("miwa_active_account") || "default";
+let availableAccounts = [];
 let fansData = [];
 let activeUserId = null;
 let activeFilter = "all";
@@ -3940,6 +3942,158 @@ async function translateVisibleMessages() {
             el.innerText = '🌍 ' + translated;
             msgs[i].appendChild(el);
         }
+    }
+}
+
+
+// ==================== GESTION MULTI-COMPTES ====================
+async function loadAccountsList() {
+    try {
+        var r = await fetch('/api/accounts?token=' + encodeURIComponent(authToken));
+        var d = await r.json();
+        if (d.ok && d.accounts) {
+            availableAccounts = d.accounts;
+            renderAccountDropdown();
+            renderAccountsModalList();
+        }
+    } catch(e) {
+        console.error("loadAccountsList error:", e);
+    }
+}
+
+function renderAccountDropdown() {
+    var select = document.getElementById("accountSelectDropdown");
+    if (!select) return;
+    select.innerHTML = availableAccounts.map(function(a) {
+        var isSel = (a.id === currentAccountId) ? "selected" : "";
+        var badge = a.unread > 0 ? " (" + a.unread + " non lus)" : "";
+        return '<option value="' + a.id + '" ' + isSel + '>' + a.name + badge + '</option>';
+    }).join("");
+}
+
+function renderAccountsModalList() {
+    var container = document.getElementById("accountsListModalContainer");
+    if (!container) return;
+    if (!availableAccounts.length) {
+        container.innerHTML = '<div class="text-center text-xs text-gray-400 py-4">Aucun compte</div>';
+        return;
+    }
+    container.innerHTML = availableAccounts.map(function(a) {
+        var isCurrent = (a.id === currentAccountId);
+        var activeBadge = isCurrent 
+            ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-sky-500 text-white shadow-xs">Actif</span>'
+            : '<button onclick="switchAccount(\'' + a.id + '\'); closeAccountsModal();" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-[#cbd5e1] hover:bg-sky-50 hover:text-sky-700 text-[#334155] transition cursor-pointer">Sélectionner</button>';
+        
+        var delBtn = (a.id !== "default" && !a.is_default)
+            ? '<button onclick="deleteAccount(\'' + a.id + '\')" class="w-6 h-6 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 flex items-center justify-center transition cursor-pointer" title="Supprimer"><i class="fa-solid fa-trash-can text-[10px]"></i></button>'
+            : '';
+
+        return '<div class="p-3 rounded-xl border ' + (isCurrent ? 'border-sky-400 bg-sky-50/50' : 'border-[#e2e8f0] bg-white') + ' flex items-center justify-between gap-3 transition">' +
+            '<div class="flex items-center gap-2.5 min-w-0">' +
+                '<div class="w-9 h-9 rounded-xl ' + (isCurrent ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600') + ' flex items-center justify-center font-bold text-xs shrink-0">' +
+                    '<i class="fa-solid fa-user"></i>' +
+                '</div>' +
+                '<div class="min-w-0">' +
+                    '<div class="flex items-center gap-1.5">' +
+                        '<span class="text-xs font-bold text-[#0f172a] truncate">' + a.name + '</span>' +
+                        (a.unread > 0 ? '<span class="w-2 h-2 rounded-full bg-blue-600" title="' + a.unread + ' non lus"></span>' : '') +
+                    '</div>' +
+                    '<div class="text-[10px] text-[#64748b] flex items-center gap-2 mt-0.5">' +
+                        '<span>' + a.total_fans + ' fan(s)</span>' +
+                        '<span>•</span>' +
+                        '<span>' + (a.phone || 'Sans n°') + '</span>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="flex items-center gap-2 shrink-0">' +
+                activeBadge +
+                delBtn +
+            '</div>' +
+        '</div>';
+    }).join("");
+}
+
+function openAccountsModal() {
+    loadAccountsList();
+    document.getElementById("accountsModal").style.display = "flex";
+}
+
+function closeAccountsModal() {
+    document.getElementById("accountsModal").style.display = "none";
+}
+
+function switchAccount(accId) {
+    if (!accId) return;
+    currentAccountId = accId;
+    localStorage.setItem("miwa_active_account", accId);
+    
+    activeUserId = null;
+    sessionStorage.removeItem("miwa_active_fan");
+    document.getElementById("chatTitle").innerText = "Sélectionne un fan";
+    document.getElementById("chatMessages").innerHTML = '<div class="h-full flex flex-col items-center justify-center text-[#94a3b8] text-xs"><i class="fa-regular fa-comments text-3xl mb-2 text-[#cbd5e1]"></i><span>Sélectionne un fan pour démarrer</span></div>';
+    document.getElementById("sendMessageBox").classList.add("hidden");
+    document.getElementById("chatHeaderActions").classList.add("hidden");
+    document.getElementById("chatAvatarContainer").classList.add("hidden");
+
+    renderAccountDropdown();
+    renderAccountsModalList();
+    refreshData();
+}
+
+async function createNewAccount() {
+    var name = (document.getElementById("newAccountNameInput").value || "").trim();
+    var phone = (document.getElementById("newAccountPhoneInput").value || "").trim();
+    if (!name) {
+        alert("Veuillez indiquer un nom pour ce compte.");
+        return;
+    }
+    var btn = document.getElementById("createAccountBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Création...';
+    try {
+        var r = await fetch('/api/accounts/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: authToken, name: name, phone: phone })
+        });
+        var d = await r.json();
+        if (d.ok && d.account) {
+            document.getElementById("newAccountNameInput").value = "";
+            document.getElementById("newAccountPhoneInput").value = "";
+            await loadAccountsList();
+            switchAccount(d.account.id);
+            closeAccountsModal();
+        } else {
+            alert("Erreur: " + (d.error || "Impossible de créer le compte"));
+        }
+    } catch(e) {
+        alert("Erreur réseau");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check text-xs"></i> <span>Créer et isoler ce compte</span>';
+    }
+}
+
+async function deleteAccount(accId) {
+    if (!confirm("Voulez-vous retirer ce compte du Dashboard ? Ses données resteront isolées sur le serveur.")) return;
+    try {
+        var r = await fetch('/api/accounts/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: authToken, id: accId })
+        });
+        var d = await r.json();
+        if (d.ok) {
+            if (currentAccountId === accId) {
+                switchAccount("default");
+            } else {
+                await loadAccountsList();
+            }
+        } else {
+            alert("Erreur: " + (d.error || "Impossible"));
+        }
+    } catch(e) {
+        alert("Erreur réseau");
     }
 }
 
