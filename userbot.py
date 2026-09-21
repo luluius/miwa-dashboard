@@ -4,6 +4,7 @@ Une fois connecté la première fois, la session est sauvegardée définitivemen
 et le code ne vous sera plus JAMAIS redemandé !
 """
 import os
+import sys
 import random
 import asyncio
 import logging
@@ -40,7 +41,8 @@ if not API_ID or not API_HASH:
     print("=" * 60 + "\n")
     exit(1)
 
-gemini_client = MiwaGeminiClient()
+hist_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("conversation_histories.json"))
+gemini_client = MiwaGeminiClient(history_file=hist_file)
 
 import json
 import time
@@ -48,8 +50,26 @@ import time
 MY_USER_ID = None
 PROCESSED_MESSAGES = set()
 
-# État des conversations pour le suivi d'inactivité
-STATES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat_states.json")
+# --- GESTION MULTI-COMPTES ---
+CURRENT_ACCOUNT = "default"
+for arg in sys.argv[1:]:
+    if arg.startswith("--account="):
+        CURRENT_ACCOUNT = arg.split("=", 1)[1].strip() or "default"
+    elif not arg.startswith("-"):
+        CURRENT_ACCOUNT = arg.strip() or "default"
+
+print(f"🤖 Démarrage Userbot pour le compte : [{CURRENT_ACCOUNT}]")
+
+def get_account_filename(base_name):
+    if CURRENT_ACCOUNT == "default" or not CURRENT_ACCOUNT:
+        return base_name
+    name, ext = os.path.splitext(base_name)
+    return f"{name}_{CURRENT_ACCOUNT}{ext}"
+
+STATES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("chat_states.json"))
+USER_PRESENCE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("user_presence.json"))
+QUEUE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("message_queue.json"))
+
 CHAT_STATES = {}
 
 def load_chat_states():
@@ -70,7 +90,7 @@ def save_chat_states():
     except Exception as e:
         logger.error(f"Erreur sauvegarde chat_states: {e}")
 
-USER_PRESENCE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_presence.json")
+# USER_PRESENCE_FILE dynamique
 MEDIA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "media")
 os.makedirs(MEDIA_DIR, exist_ok=True)
 
@@ -259,7 +279,7 @@ async def inactivity_checker(client):
             await asyncio.sleep(10)
 
 
-QUEUE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "message_queue.json")
+# QUEUE_FILE dynamique
 
 async def queue_processor(client):
     """Envoie les messages mis en queue depuis le dashboard toutes les secondes."""
@@ -432,12 +452,6 @@ async def on_private_message(event):
     logger.info(f"📩 [Message reçu] De {sender_name} (ID: {user_id}): {user_text}")
 
     try:
-        # Marquer comme lu sur Telegram
-        try:
-            await event.client.send_read_acknowledge(event.chat_id, max_id=event.id)
-        except Exception:
-            pass
-
         # Traitement média (photo, document, vidéo, gif)
         photo_url = None
         is_voice = bool(getattr(event, "voice", False) or getattr(event, "audio", False))
@@ -533,7 +547,8 @@ async def on_private_message(event):
             "chat_id": event.chat_id,
             "sender_name": sender_name,
             "message_count": message_count,
-            "relance_sent": False
+            "relance_sent": False,
+            "is_read": False
         }
         if lang != "fr":
             update_state_dict["language"] = lang
@@ -622,7 +637,8 @@ async def on_user_update(event):
 
 async def main():
     # Définition du chemin absolu pour enregistrer le fichier de session
-    session_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "miwa_personal_session")
+    sess_name = "miwa_personal_session" if CURRENT_ACCOUNT == "default" else f"miwa_personal_session_{CURRENT_ACCOUNT}"
+    session_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), sess_name)
     
     # Création du client dans la boucle asynchrone courante (évite les conflits SQLite)
     client = TelegramClient(session_file, int(API_ID), API_HASH)
