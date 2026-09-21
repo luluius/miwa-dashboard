@@ -566,26 +566,6 @@ async def on_private_message(event):
     except Exception as e:
         logger.error(f"Erreur enregistrement message de {sender_name}: {e}")
 
-        # Temps de frappe au clavier réaliste (6 à 12 secondes)
-        typing_duration = max(6.0, min(12.0, (len(reply) / 12.0) + random.uniform(3.0, 5.0)))
-        async with event.client.action(event.chat_id, 'typing'):
-            await asyncio.sleep(typing_duration)
-
-        logger.info(f"📤 [Perso] Miwa répond à {sender_name}: {reply[:60]}...")
-        await event.reply(reply)
-
-        # Enregistrer que Miwa a répondu pour le timer d'inactivité
-        update_chat_state(user_id, {
-            "last_message_from": "miwa",
-            "last_message_time": time.time(),
-            "chat_id": event.chat_id,
-            "sender_name": sender_name,
-            "relance_sent": False,
-            "conversation_paused": is_fan_busy_or_leaving
-        })
-    except Exception as e:
-        logger.error(f"Erreur lors de la réponse à {sender_name}: {e}")
-
 async def on_message_read(event):
     """Déclenché quand le fan lit nos messages sortants sur Telegram."""
     try:
