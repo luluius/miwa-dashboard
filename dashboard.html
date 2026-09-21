@@ -1089,7 +1089,15 @@
 
 <script>
 let authToken = localStorage.getItem("miwa_auth_token") || "";
-let currentAccountId = localStorage.getItem("miwa_active_account") || "default";
+let currentAccountId = (function(){
+    var saved = localStorage.getItem("miwa_active_account");
+    // Nettoyer les valeurs corrompues
+    if (!saved || saved === "null" || saved === "undefined" || saved === "") {
+        localStorage.removeItem("miwa_active_account");
+        return "default";
+    }
+    return saved;
+})();
 let availableAccounts = [];
 let fansData = [];
 let activeUserId = null;
