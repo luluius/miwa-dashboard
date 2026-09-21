@@ -3988,9 +3988,21 @@ function renderAccountsModalList() {
     }
     container.innerHTML = availableAccounts.map(function(a) {
         var isCurrent = (a.id === currentAccountId);
+
         var activeBadge = isCurrent 
             ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-sky-500 text-white shadow-xs">Actif</span>'
             : '<button onclick="switchAccount(\'' + a.id + '\'); closeAccountsModal();" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-[#cbd5e1] hover:bg-sky-50 hover:text-sky-700 text-[#334155] transition cursor-pointer">Sélectionner</button>';
+
+        // Badge de connexion Telegram
+        var sessionBadge = '';
+        var connectBtn = '';
+        if (a.id !== 'default') {
+            if (a.has_session) {
+                sessionBadge = '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-100 text-green-700"><i class="fa-solid fa-circle-check text-[8px]"></i> Connecté</span>';
+            } else {
+                connectBtn = '<button onclick="openConnectModal(\'' + a.id + '\', \'' + (a.phone || '') + '\')" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-yellow-400 hover:bg-yellow-500 text-yellow-900 transition cursor-pointer flex items-center gap-1"><i class="fa-brands fa-telegram text-[10px]"></i> Connecter</button>';
+            }
+        }
         
         var delBtn = (a.id !== "default" && !a.is_default)
             ? '<button onclick="deleteAccount(\'' + a.id + '\')" class="w-6 h-6 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 flex items-center justify-center transition cursor-pointer" title="Supprimer"><i class="fa-solid fa-trash-can text-[10px]"></i></button>'
@@ -4002,9 +4014,10 @@ function renderAccountsModalList() {
                     '<i class="fa-solid fa-user"></i>' +
                 '</div>' +
                 '<div class="min-w-0">' +
-                    '<div class="flex items-center gap-1.5">' +
+                    '<div class="flex items-center gap-1.5 flex-wrap">' +
                         '<span class="text-xs font-bold text-[#0f172a] truncate">' + a.name + '</span>' +
                         (a.unread > 0 ? '<span class="w-2 h-2 rounded-full bg-blue-600" title="' + a.unread + ' non lus"></span>' : '') +
+                        sessionBadge +
                     '</div>' +
                     '<div class="text-[10px] text-[#64748b] flex items-center gap-2 mt-0.5">' +
                         '<span>' + a.total_fans + ' fan(s)</span>' +
@@ -4014,6 +4027,7 @@ function renderAccountsModalList() {
                 '</div>' +
             '</div>' +
             '<div class="flex items-center gap-2 shrink-0">' +
+                connectBtn +
                 activeBadge +
                 delBtn +
             '</div>' +
@@ -4105,6 +4119,142 @@ async function deleteAccount(accId) {
     }
 }
 
+// ── FLOW DE CONNEXION TELEGRAM ──
+var _connectingAccountId = null;
+
+function openConnectModal(accountId, prefillPhone) {
+    _connectingAccountId = accountId;
+    document.getElementById("connectStepPhone").classList.remove("hidden");
+    document.getElementById("connectStepCode").classList.add("hidden");
+    document.getElementById("connectStep2FA").classList.add("hidden");
+    document.getElementById("connectStepSuccess").classList.add("hidden");
+    document.getElementById("connectPhoneInput").value = prefillPhone || "";
+    document.getElementById("connectCodeInput").value = "";
+    document.getElementById("connect2FAInput").value = "";
+    document.getElementById("connectError").innerText = "";
+    document.getElementById("connectError").classList.add("hidden");
+    document.getElementById("connectModal").style.display = "flex";
+}
+
+function closeConnectModal() {
+    document.getElementById("connectModal").style.display = "none";
+    _connectingAccountId = null;
+}
+
+async function connectAccountSendCode() {
+    if (!_connectingAccountId) return;
+    var phone = (document.getElementById("connectPhoneInput").value || "").trim();
+    if (!phone) {
+        document.getElementById("connectError").innerText = "Numéro requis";
+        document.getElementById("connectError").classList.remove("hidden");
+        return;
+    }
+    var btn = document.getElementById("connectSendCodeBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Envoi...';
+    document.getElementById("connectError").classList.add("hidden");
+    try {
+        var r = await fetch('/api/accounts/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: authToken, account_id: _connectingAccountId, phone: phone })
+        });
+        var d = await r.json();
+        if (d.ok) {
+            document.getElementById("connectStepPhone").classList.add("hidden");
+            document.getElementById("connectStepCode").classList.remove("hidden");
+            document.getElementById("connectCodeInfo").innerText = "Code envoyé au " + phone;
+        } else {
+            document.getElementById("connectError").innerText = d.error || "Erreur inconnue";
+            document.getElementById("connectError").classList.remove("hidden");
+        }
+    } catch(e) {
+        document.getElementById("connectError").innerText = "Erreur réseau";
+        document.getElementById("connectError").classList.remove("hidden");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-brands fa-telegram text-xs"></i> Envoyer le code SMS';
+    }
+}
+
+async function connectAccountVerifyCode() {
+    if (!_connectingAccountId) return;
+    var code = (document.getElementById("connectCodeInput").value || "").trim();
+    if (!code) {
+        document.getElementById("connectError").innerText = "Code requis";
+        document.getElementById("connectError").classList.remove("hidden");
+        return;
+    }
+    var btn = document.getElementById("connectVerifyBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Vérification...';
+    document.getElementById("connectError").classList.add("hidden");
+    try {
+        var r = await fetch('/api/accounts/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: authToken, account_id: _connectingAccountId, code: code })
+        });
+        var d = await r.json();
+        if (d.ok) {
+            document.getElementById("connectStepCode").classList.add("hidden");
+            document.getElementById("connectStepSuccess").classList.remove("hidden");
+            document.getElementById("connectSuccessName").innerText = d.name || "Compte";
+            await loadAccountsList();
+        } else if (d.need_2fa) {
+            document.getElementById("connectStepCode").classList.add("hidden");
+            document.getElementById("connectStep2FA").classList.remove("hidden");
+            document.getElementById("connect2FAInfo").innerText = d.message || "Entre ton mot de passe 2FA Telegram";
+        } else {
+            document.getElementById("connectError").innerText = d.error || "Code invalide";
+            document.getElementById("connectError").classList.remove("hidden");
+        }
+    } catch(e) {
+        document.getElementById("connectError").innerText = "Erreur réseau";
+        document.getElementById("connectError").classList.remove("hidden");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check text-xs"></i> Vérifier le code';
+    }
+}
+
+async function connectAccountVerify2FA() {
+    if (!_connectingAccountId) return;
+    var pwd = (document.getElementById("connect2FAInput").value || "").trim();
+    if (!pwd) {
+        document.getElementById("connectError").innerText = "Mot de passe requis";
+        document.getElementById("connectError").classList.remove("hidden");
+        return;
+    }
+    var btn = document.getElementById("connect2FABtn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Connexion...';
+    document.getElementById("connectError").classList.add("hidden");
+    try {
+        var r = await fetch('/api/accounts/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: authToken, account_id: _connectingAccountId, code: "", password: pwd })
+        });
+        var d = await r.json();
+        if (d.ok) {
+            document.getElementById("connectStep2FA").classList.add("hidden");
+            document.getElementById("connectStepSuccess").classList.remove("hidden");
+            document.getElementById("connectSuccessName").innerText = d.name || "Compte";
+            await loadAccountsList();
+        } else {
+            document.getElementById("connectError").innerText = d.error || "Mot de passe incorrect";
+            document.getElementById("connectError").classList.remove("hidden");
+        }
+    } catch(e) {
+        document.getElementById("connectError").innerText = "Erreur réseau";
+        document.getElementById("connectError").classList.remove("hidden");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-lock text-xs"></i> Valider';
+    }
+}
+
 </script>
 
 <!-- Modal Gestion Multi-Comptes Telegram -->
@@ -4146,6 +4296,83 @@ async function deleteAccount(accId) {
                 <span>Créer et isoler ce compte</span>
             </button>
             <p class="text-[10px] text-[#64748b] leading-tight">Chaque compte dispose de son propre répertoire de fans, historique de discussion et file de messages indépendants.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Connexion Telegram (flow OTP) -->
+<div id="connectModal" style="display:none;" class="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4" onclick="if(event.target===this)closeConnectModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#2563eb] text-white">
+            <div class="flex items-center gap-2.5">
+                <i class="fa-brands fa-telegram text-sky-400 text-base"></i>
+                <div>
+                    <h3 class="font-bold text-sm">Connecter un compte Telegram</h3>
+                    <p class="text-[10px] text-slate-300">Authentification sécurisée via SMS</p>
+                </div>
+            </div>
+            <button onclick="closeConnectModal()" class="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="p-5 space-y-4">
+            <!-- Message d'erreur global -->
+            <div id="connectError" class="hidden text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2"></div>
+
+            <!-- ÉTAPE 1 : Numéro de téléphone -->
+            <div id="connectStepPhone" class="space-y-3">
+                <p class="text-xs text-slate-600">Entre le numéro de téléphone du compte Telegram à connecter.</p>
+                <input type="tel" id="connectPhoneInput" placeholder="+33 6 12 34 56 78"
+                    class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onkeydown="if(event.key==='Enter')connectAccountSendCode()">
+                <button id="connectSendCodeBtn" onclick="connectAccountSendCode()"
+                    class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+                    <i class="fa-brands fa-telegram text-xs"></i> Envoyer le code SMS
+                </button>
+            </div>
+
+            <!-- ÉTAPE 2 : Code OTP -->
+            <div id="connectStepCode" class="hidden space-y-3">
+                <p id="connectCodeInfo" class="text-xs text-slate-600 font-medium"></p>
+                <p class="text-[11px] text-slate-500">Telegram t'a envoyé un code dans l'app ou par SMS. Entre-le ci-dessous.</p>
+                <input type="text" id="connectCodeInput" placeholder="12345" maxlength="6" inputmode="numeric"
+                    class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-[0.3em] font-mono"
+                    onkeydown="if(event.key==='Enter')connectAccountVerifyCode()">
+                <button id="connectVerifyBtn" onclick="connectAccountVerifyCode()"
+                    class="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-check text-xs"></i> Vérifier le code
+                </button>
+                <button onclick="document.getElementById('connectStepCode').classList.add('hidden'); document.getElementById('connectStepPhone').classList.remove('hidden');" class="w-full text-[10px] text-slate-400 hover:text-slate-600 text-center cursor-pointer">← Changer de numéro</button>
+            </div>
+
+            <!-- ÉTAPE 3 : 2FA -->
+            <div id="connectStep2FA" class="hidden space-y-3">
+                <p id="connect2FAInfo" class="text-xs text-slate-600 font-medium"></p>
+                <input type="password" id="connect2FAInput" placeholder="Mot de passe Telegram 2FA"
+                    class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onkeydown="if(event.key==='Enter')connectAccountVerify2FA()">
+                <button id="connect2FABtn" onclick="connectAccountVerify2FA()"
+                    class="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-lock text-xs"></i> Valider
+                </button>
+            </div>
+
+            <!-- ÉTAPE 4 : Succès -->
+            <div id="connectStepSuccess" class="hidden text-center space-y-3 py-4">
+                <div class="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+                    <i class="fa-solid fa-circle-check text-green-600 text-2xl"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-slate-800">Compte connecté !</p>
+                    <p class="text-xs text-slate-500 mt-1">Connecté en tant que <span id="connectSuccessName" class="font-semibold text-slate-700"></span></p>
+                </div>
+                <button onclick="closeConnectModal(); openAccountsModal();"
+                    class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl transition cursor-pointer">
+                    <i class="fa-solid fa-arrow-left text-xs"></i> Retour aux comptes
+                </button>
+            </div>
         </div>
     </div>
 </div>
