@@ -1103,8 +1103,8 @@ async def api_accounts_connect_handler(request):
     if account_id == "default":
         return web.json_response({"error": "Impossible de modifier le compte principal"}, status=400)
 
-    api_id = int(os.getenv("API_ID", "0"))
-    api_hash = os.getenv("API_HASH", "")
+    api_id = int(os.getenv("API_ID") or os.getenv("TELEGRAM_API_ID") or "0")
+    api_hash = os.getenv("API_HASH") or os.getenv("TELEGRAM_API_HASH") or ""
     if not api_id or not api_hash:
         return web.json_response({"error": "API_ID / API_HASH non configurés sur le serveur"}, status=500)
 
