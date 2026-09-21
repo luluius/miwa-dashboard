@@ -876,6 +876,24 @@
     <!-- Sidebar : Répertoire -->
     <div id="sidebarPanel" class="w-80 md:w-[320px] shrink-0 border-r border-[#e5e7eb] bg-[#f8f9fa] flex flex-col overflow-hidden">
         <div class="p-3 pb-0 space-y-2.5">
+            <!-- SWITCHER DE COMPTE TELEGRAM (MULTI-COMPTE) -->
+            <div class="bg-white border border-[#e2e8f0] rounded-xl p-2 shadow-xs flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <div class="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center text-xs shrink-0 font-bold">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-[9px] font-bold uppercase tracking-wider text-[#94a3b8] leading-none mb-0.5">Compte actif</div>
+                        <select id="accountSelectDropdown" onchange="switchAccount(this.value)" class="w-full text-xs font-bold text-[#0f172a] bg-transparent border-0 p-0 focus:ring-0 cursor-pointer truncate">
+                            <option value="default">Compte Principal</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="openAccountsModal()" class="px-2 py-1 bg-[#f1f5f9] hover:bg-sky-50 hover:text-sky-600 text-[#475569] text-[11px] font-bold rounded-lg transition border border-[#e2e8f0] flex items-center gap-1 shrink-0" title="Gérer ou ajouter des comptes">
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <span class="hidden sm:inline">Comptes</span>
+                </button>
+            </div>
             <!-- Search bar & Vault icon -->
             <div class="flex items-center gap-2">
                 <div class="relative flex-1">
@@ -1123,6 +1141,7 @@ function checkAuth(){
         loadPaymentLinks();
         loadScripts();
         loadVault();
+        loadAccountsList();
     } else {
         modal.style.display = "flex";
         setTimeout(function(){
@@ -1153,6 +1172,7 @@ async function handleAuth(e){
         loadPaymentLinks();
         loadScripts();
         loadVault();
+        loadAccountsList();
     } else {
         if(err){ err.innerText = "Mot de passe incorrect"; err.classList.remove("hidden"); }
         if(inp){ inp.value = ""; inp.focus(); }
@@ -1214,7 +1234,7 @@ async function refreshData(){
     if(isRefreshing) return;
     isRefreshing = true;
     try{
-        var r = await fetch("/api/fans?token=" + encodeURIComponent(authToken));
+        var r = await fetch("/api/fans?token=" + encodeURIComponent(authToken) + "&account=" + encodeURIComponent(currentAccountId));
         if(r.status === 401){
             localStorage.removeItem("miwa_auth_token");
             authToken = "";
@@ -1417,7 +1437,7 @@ function selectFan(uid){
         fetch("/api/mark-read", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({token: authToken, user_id: uid})
+            body: JSON.stringify({token: authToken, user_id: uid, account: currentAccountId})
         }).catch(function(e){ console.error("mark-read:", e); });
     }
     applyFilters();
@@ -1431,7 +1451,7 @@ async function markAsRead(){
         var r = await fetch("/api/mark-read", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({token: authToken, user_id: activeUserId})
+            body: JSON.stringify({token: authToken, user_id: activeUserId, account: currentAccountId})
         });
         var d = await r.json();
         if(d.ok){
@@ -1538,7 +1558,7 @@ async function loadChat(uid, scroll){
 
 
     try{
-        var r = await fetch("/api/chat/" + encodeURIComponent(uid) + "?token=" + encodeURIComponent(authToken));
+        var r = await fetch("/api/chat/" + encodeURIComponent(uid) + "?token=" + encodeURIComponent(authToken) + "&account=" + encodeURIComponent(currentAccountId));
         var d = await r.json();
         currentChatHistory = d.history || [];
 
@@ -1795,7 +1815,7 @@ async function applyTag(tagId){
         var r = await fetch("/api/status", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({token: authToken, user_id: targetId, tag_id: tagId})
+            body: JSON.stringify({token: authToken, user_id: targetId, tag_id: tagId, account: currentAccountId})
         });
         var d = await r.json();
         if(!d.ok){
@@ -2010,7 +2030,7 @@ async function saveProfile(){
     var followup_note = document.getElementById("profFollowupNote").value.trim();
     try{
         var r = await fetch("/api/profile", {method:"POST", headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({token: authToken, user_id: activeUserId, profile: prof,
+            body: JSON.stringify({token: authToken, user_id: activeUserId, account: currentAccountId, profile: prof,
                 total_spent: total_spent, followup_date: followup_date, followup_note: followup_note})});
         var d = await r.json();
         if(d.ok){ closeProfileModal(); refreshData(); }
@@ -2212,6 +2232,7 @@ async function sendMessage(){
                 body: JSON.stringify({
                     token: authToken,
                     user_id: activeUserId,
+                    account: currentAccountId,
                     image_b64: b64ToSend,
                     filename: fnameToSend,
                     message: txt
@@ -2221,7 +2242,7 @@ async function sendMessage(){
             r = await fetch("/api/send", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({token: authToken, user_id: activeUserId, message: txt})
+                body: JSON.stringify({token: authToken, user_id: activeUserId, account: currentAccountId, message: txt})
             });
         }
         d = await r.json();
@@ -2254,7 +2275,7 @@ async function suggestReply(){
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[9px]"></i> En cours...';
     try{
         var r = await fetch("/api/suggest", {method:"POST", headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({token: authToken, user_id: activeUserId})});
+            body: JSON.stringify({token: authToken, user_id: activeUserId, account: currentAccountId})});
         var d = await r.json();
         if(d.ok && d.suggestion){ inp.value = d.suggestion; inp.focus(); }
         else alert("Erreur: " + (d.error || "Inconnue"));
@@ -2654,6 +2675,7 @@ async function sendVaultItemToChat(id){
             body: JSON.stringify({
                 token: authToken,
                 user_id: activeUserId,
+                account: currentAccountId,
                 id: id,
                 message: caption.trim()
             })
@@ -3289,7 +3311,7 @@ async function contextActionFanInfo() {
     document.getElementById("fanInfoModal").style.display = "flex";
 
     try {
-        var r = await fetch("/api/chat/" + encodeURIComponent(uid) + "?token=" + encodeURIComponent(authToken));
+        var r = await fetch("/api/chat/" + encodeURIComponent(uid) + "?token=" + encodeURIComponent(authToken) + "&account=" + encodeURIComponent(currentAccountId));
         if (!r.ok) throw new Error("Erreur API");
         var data = await r.json();
         var history = data.history || [];
@@ -3621,6 +3643,7 @@ async function executeBulkAction() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 token: authToken,
+                account: currentAccountId,
                 action: bulkCurrentOperation,
                 user_ids: uids
             })
@@ -3850,8 +3873,8 @@ async function sendMassMessage() {
         try {
             var url = massImageBase64 ? '/api/send-media' : '/api/send';
             var payload = massImageBase64
-                ? { token: authToken, user_id: uid, image_b64: massImageBase64, message: text, filename: massImageFilename }
-                : { token: authToken, user_id: uid, message: text };
+                ? { token: authToken, user_id: uid, account: currentAccountId, image_b64: massImageBase64, message: text, filename: massImageFilename }
+                : { token: authToken, user_id: uid, account: currentAccountId, message: text };
 
             var r = await fetch(url, {
                 method: 'POST',
@@ -3921,5 +3944,49 @@ async function translateVisibleMessages() {
 }
 
 </script>
+
+<!-- Modal Gestion Multi-Comptes Telegram -->
+<div id="accountsModal" style="display:none;" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4" onclick="if(event.target===this)closeAccountsModal()">
+    <div class="bg-white rounded-2xl shadow-2xl flex flex-col w-full max-w-md max-h-[85vh] overflow-hidden">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#334155] text-white shrink-0">
+            <div class="flex items-center gap-2.5">
+                <i class="fa-solid fa-users-gear text-sm text-sky-400"></i>
+                <div>
+                    <h3 class="font-bold text-sm">Gestion des Comptes Telegram</h3>
+                    <p class="text-[10px] text-slate-300">Ajoutez et switchez entre plusieurs comptes étanches</p>
+                </div>
+            </div>
+            <button onclick="closeAccountsModal()" class="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Liste des comptes existants -->
+        <div class="p-4 overflow-y-auto flex-1 space-y-2.5" id="accountsListModalContainer">
+            <div class="text-center text-xs text-gray-400 py-4">Chargement des comptes...</div>
+        </div>
+
+        <!-- Formulaire Ajouter un compte -->
+        <div class="p-4 bg-[#f8fafc] border-t border-[#e2e8f0] space-y-2.5 shrink-0">
+            <div class="text-xs font-bold text-[#1e293b] flex items-center gap-1.5">
+                <i class="fa-solid fa-plus text-sky-600 text-[10px]"></i>
+                <span>Ajouter un nouveau compte Telegram</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input type="text" id="newAccountNameInput" placeholder="Nom du compte (ex: Compte 2)" 
+                    class="px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:ring-1 focus:ring-sky-500">
+                <input type="text" id="newAccountPhoneInput" placeholder="N° Téléphone (+33...)" 
+                    class="px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:ring-1 focus:ring-sky-500">
+            </div>
+            <button onclick="createNewAccount()" id="createAccountBtn" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-check text-xs"></i>
+                <span>Créer et isoler ce compte</span>
+            </button>
+            <p class="text-[10px] text-[#64748b] leading-tight">Chaque compte dispose de son propre répertoire de fans, historique de discussion et file de messages indépendants.</p>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
