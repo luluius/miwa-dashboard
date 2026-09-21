@@ -12,9 +12,7 @@ DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "miwa2026")
 PORT = int(os.getenv("DASHBOARD_PORT", "8080"))
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATES_FILE = os.path.join(BASE_DIR, "chat_states.json")
-HISTORIES_FILE = os.path.join(BASE_DIR, "conversation_histories.json")
-QUEUE_FILE = os.path.join(BASE_DIR, "message_queue.json")
+ACCOUNTS_FILE = os.path.join(BASE_DIR, "accounts.json")
 HTML_FILE = os.path.join(BASE_DIR, "dashboard.html")
 PAYMENT_LINKS_FILE = os.path.join(BASE_DIR, "payment_links.json")
 SCRIPTS_FILE = os.path.join(BASE_DIR, "scripts.json")
@@ -23,8 +21,39 @@ TAGS_FILE = os.path.join(BASE_DIR, "custom_tags.json")
 RATES_RULES_FILE = os.path.join(BASE_DIR, "rates_rules.json")
 MEDIA_DIR = os.path.join(BASE_DIR, "media")
 VAULT_DIR = os.path.join(BASE_DIR, "vault")
-USER_PRESENCE_FILE = os.path.join(BASE_DIR, "user_presence.json")
 BACKUP_DIR = os.path.join(BASE_DIR, "backups")
+
+# Helper pour obtenir les chemins de données selon le compte
+def get_account_id(request):
+    try:
+        aid = request.query.get("account", "").strip()
+        if not aid and request.can_read_body:
+            pass
+        return aid if aid else "default"
+    except Exception:
+        return "default"
+
+def get_account_paths(account_id="default"):
+    aid = (account_id or "default").strip()
+    if aid == "default" or not aid:
+        return {
+            "states": os.path.join(BASE_DIR, "chat_states.json"),
+            "histories": os.path.join(BASE_DIR, "conversation_histories.json"),
+            "queue": os.path.join(BASE_DIR, "message_queue.json"),
+            "presence": os.path.join(BASE_DIR, "user_presence.json"),
+        }
+    return {
+        "states": os.path.join(BASE_DIR, f"chat_states_{aid}.json"),
+        "histories": os.path.join(BASE_DIR, f"conversation_histories_{aid}.json"),
+        "queue": os.path.join(BASE_DIR, f"message_queue_{aid}.json"),
+        "presence": os.path.join(BASE_DIR, f"user_presence_{aid}.json"),
+    }
+
+# Compatibilité descendante
+STATES_FILE = os.path.join(BASE_DIR, "chat_states.json")
+HISTORIES_FILE = os.path.join(BASE_DIR, "conversation_histories.json")
+QUEUE_FILE = os.path.join(BASE_DIR, "message_queue.json")
+USER_PRESENCE_FILE = os.path.join(BASE_DIR, "user_presence.json")
 os.makedirs(MEDIA_DIR, exist_ok=True)
 os.makedirs(VAULT_DIR, exist_ok=True)
 os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -157,9 +186,11 @@ async def api_fans_handler(request):
     token = request.query.get("token", "")
     if token != DASHBOARD_PASSWORD:
         return web.json_response({"error": "Unauthorized"}, status=401)
-    chat_states = load_json(STATES_FILE)
-    histories = load_json(HISTORIES_FILE)
-    presence = load_json(USER_PRESENCE_FILE)
+    acc_id = request.query.get("account", "default") or "default"
+    paths = get_account_paths(acc_id)
+    chat_states = load_json(paths["states"])
+    histories = load_json(paths["histories"])
+    presence = load_json(paths["presence"])
     tags_list = load_tags()
     tags_dict = {t["id"]: t for t in tags_list}
     now = time.time()
@@ -257,7 +288,9 @@ async def api_chat_handler(request):
     if token != DASHBOARD_PASSWORD:
         return web.json_response({"error": "Unauthorized"}, status=401)
     uid = request.match_info.get("user_id", "")
-    histories = load_json(HISTORIES_FILE)
+    acc_id = request.query.get("account", "default") or "default"
+    paths = get_account_paths(acc_id)
+    histories = load_json(paths["histories"])
     return web.json_response({"user_id": uid, "history": histories.get(str(uid), [])})
 
 async def api_status_handler(request):
@@ -271,13 +304,14 @@ async def api_status_handler(request):
     tag_id = body.get("tag_id") if "tag_id" in body else body.get("status_code", "")
     if tag_id == "dore":
         tag_id = "masquer"
-
-    chat_states = load_json(STATES_FILE)
+    acc_id = body.get("account", "default") or "default"
+    paths = get_account_paths(acc_id)
+    chat_states = load_json(paths["states"])
     if user_id not in chat_states:
         chat_states[user_id] = {"sender_name": f"Fan {user_id}"}
     chat_states[user_id]["tag_id"] = tag_id or ""
     chat_states[user_id]["manual_status"] = tag_id or ""
-    save_json(STATES_FILE, chat_states)
+    save_json(paths["states"], chat_states)
     return web.json_response({"ok": True, "tag_id": tag_id})
 
 async def api_tags_handler(request):
@@ -349,7 +383,9 @@ async def api_profile_handler(request):
     user_id = str(body.get("user_id", "")).strip()
     new_profile = body.get("profile", {})
 
-    chat_states = load_json(STATES_FILE)
+    acc_id = body.get("account", "default") or "default"
+    paths = get_account_paths(acc_id)
+    chat_states = load_json(paths["states"])
     if user_id in chat_states:
         curr = chat_states[user_id].get("fan_profile", {})
         for k, v in new_profile.items():
@@ -364,7 +400,7 @@ async def api_profile_handler(request):
             chat_states[user_id]["followup_date"] = new_profile["followup_date"]
         if "followup_note" in new_profile:
             chat_states[user_id]["followup_note"] = new_profile["followup_note"]
-        save_json(STATES_FILE, chat_states)
+        save_json(paths["states"], chat_states)
         return web.json_response({"ok": True, "profile": curr})
     return web.json_response({"error": "Utilisateur non trouvé"}, status=404)
 
@@ -380,7 +416,9 @@ async def api_send_handler(request):
     if not user_id or not message:
         return web.json_response({"error": "user_id et message requis"}, status=400)
 
-    chat_states = load_json(STATES_FILE)
+    acc_id = body.get("account", "default") or "default"
+    paths = get_account_paths(acc_id)
+    chat_states = load_json(paths["states"])
     user_state = chat_states.get(user_id, {}) if isinstance(chat_states, dict) else {}
     target_lang = user_state.get("language", "fr")
 
@@ -395,11 +433,11 @@ async def api_send_handler(request):
                 actual_telegram_message = translated.strip()
                 sent_content = actual_telegram_message
         except Exception as e:
-            logger.warning(f"Erreur traduction sortante: {e}")
+            print(f"Erreur traduction sortante: {e}")
 
-    # 1. Sauvegarder immédiatement dans conversation_histories.json via gemini_client
     now_ts = time.time()
-    gemini_client.gemini_client.add_message(
+    hist_client = gemini_client.MiwaGeminiClient(history_file=paths["histories"])
+    hist_client.add_message(
         user_id,
         "assistant",
         message,
@@ -409,19 +447,17 @@ async def api_send_handler(request):
         read=False
     )
 
-    # 2. Mettre à jour l'état du chat immédiatement
     if isinstance(chat_states, dict) and user_id in chat_states:
         chat_states[user_id]["last_message_from"] = "miwa"
         chat_states[user_id]["last_message_time"] = now_ts
         chat_states[user_id]["message_count"] = chat_states[user_id].get("message_count", 0) + 1
-        save_json(STATES_FILE, chat_states)
+        save_json(paths["states"], chat_states)
 
-    # 3. Mettre dans la queue pour l'envoi Telethon
-    queue = load_json(QUEUE_FILE)
+    queue = load_json(paths["queue"])
     if not isinstance(queue, list):
         queue = []
     queue.append({"user_id": int(user_id), "message": actual_telegram_message, "queued_at": now_ts, "source": "dashboard"})
-    if save_json(QUEUE_FILE, queue):
+    if save_json(paths["queue"], queue):
         return web.json_response({"ok": True})
     return web.json_response({"error": "Erreur écriture queue"}, status=500)
 
@@ -436,9 +472,11 @@ async def api_suggest_handler(request):
     if not user_id:
         return web.json_response({"error": "user_id requis"}, status=400)
 
-    histories = load_json(HISTORIES_FILE)
+    acc_id = body.get("account", "default") or "default"
+    paths = get_account_paths(acc_id)
+    histories = load_json(paths["histories"])
     history = histories.get(user_id, [])
-    chat_states = load_json(STATES_FILE)
+    chat_states = load_json(paths["states"])
     fan_profile = chat_states.get(user_id, {}).get("fan_profile", {})
 
     import gemini_client
@@ -489,12 +527,14 @@ async def api_bulk_action_handler(request):
     if not isinstance(user_ids, list) or not user_ids:
         return web.json_response({"error": "user_ids liste requise"}, status=400)
 
-    chat_states = load_json(STATES_FILE)
-    histories = load_json(HISTORIES_FILE)
-    presence = load_json(USER_PRESENCE_FILE)
+    acc_id = body.get("account", "default") or "default"
+    paths = get_account_paths(acc_id)
+    chat_states = load_json(paths["states"])
+    histories = load_json(paths["histories"])
+    presence = load_json(paths["presence"])
 
     # ── Sauvegarde automatique avant toute action destructive ──
-    backup_name = create_backup(label=action)
+    backup_name = create_backup(label=f"{action}_{acc_id}")
 
     count = 0
     if action == "delete":
@@ -507,9 +547,9 @@ async def api_bulk_action_handler(request):
                 del histories[uid_str]
             if uid_str in presence:
                 del presence[uid_str]
-        save_json(STATES_FILE, chat_states)
-        save_json(HISTORIES_FILE, histories)
-        save_json(USER_PRESENCE_FILE, presence)
+        save_json(paths["states"], chat_states)
+        save_json(paths["histories"], histories)
+        save_json(paths["presence"], presence)
         return web.json_response({"ok": True, "action": "delete", "count": count, "backup": backup_name})
 
     elif action in ("block", "unblock"):
@@ -519,7 +559,7 @@ async def api_bulk_action_handler(request):
             if uid_str in chat_states:
                 chat_states[uid_str]["is_blocked"] = is_blk
                 count += 1
-        save_json(STATES_FILE, chat_states)
+        save_json(paths["states"], chat_states)
         return web.json_response({"ok": True, "action": action, "count": count, "backup": backup_name})
 
     return web.json_response({"error": "Action inconnue (delete, block, unblock)"}, status=400)
@@ -539,26 +579,27 @@ async def api_delete_chat_handler(request):
     if not user_id:
         return web.json_response({"error": "user_id requis"}, status=400)
         
-    chat_states = load_json(STATES_FILE)
-    histories = load_json(HISTORIES_FILE)
+    acc_id = body.get("account", "default") or "default"
+    paths = get_account_paths(acc_id)
+    chat_states = load_json(paths["states"])
+    histories = load_json(paths["histories"])
     
     if permanent:
         if user_id in chat_states:
             del chat_states[user_id]
-            save_json(STATES_FILE, chat_states)
+            save_json(paths["states"], chat_states)
         if user_id in histories:
             del histories[user_id]
-            save_json(HISTORIES_FILE, histories)
-        presence = load_json(USER_PRESENCE_FILE)
+            save_json(paths["histories"], histories)
+        presence = load_json(paths["presence"])
         if user_id in presence:
             del presence[user_id]
-            save_json(USER_PRESENCE_FILE, presence)
+            save_json(paths["presence"], presence)
         return web.json_response({"ok": True, "action": "permanent_deleted"})
     else:
-        # Supprimer une seule fois (masquer jusqu'au prochain message)
         if user_id in chat_states:
             chat_states[user_id]["hidden_until_time"] = int(time.time())
-            save_json(STATES_FILE, chat_states)
+            save_json(paths["states"], chat_states)
         return web.json_response({"ok": True, "action": "hidden_once"})
 
 async def api_mark_read_handler(request):
@@ -569,7 +610,9 @@ async def api_mark_read_handler(request):
     if body.get("token", "") != DASHBOARD_PASSWORD:
         return web.json_response({"error": "Unauthorized"}, status=401)
     user_id = str(body.get("user_id", "")).strip()
-    chat_states = load_json(STATES_FILE)
+    acc_id = body.get("account", "default") or "default"
+    paths = get_account_paths(acc_id)
+    chat_states = load_json(paths["states"])
     if user_id in chat_states:
         chat_states[user_id]["last_message_from"] = "miwa"
         chat_states[user_id]["is_read"] = True
@@ -614,8 +657,12 @@ async def api_send_media_handler(request):
     photo_url = f"/media/{filename}"
     now_ts = time.time()
 
+    acc_id = body.get("account", "default") or "default"
+    paths = get_account_paths(acc_id)
+
     import gemini_client
-    gemini_client.gemini_client.add_message(
+    hist_client = gemini_client.MiwaGeminiClient(history_file=paths["histories"])
+    hist_client.add_message(
         user_id,
         "assistant",
         caption,
@@ -624,14 +671,14 @@ async def api_send_media_handler(request):
         read=False
     )
 
-    chat_states = load_json(STATES_FILE)
+    chat_states = load_json(paths["states"])
     if isinstance(chat_states, dict) and user_id in chat_states:
         chat_states[user_id]["last_message_from"] = "miwa"
         chat_states[user_id]["last_message_time"] = now_ts
         chat_states[user_id]["message_count"] = chat_states[user_id].get("message_count", 0) + 1
-        save_json(STATES_FILE, chat_states)
+        save_json(paths["states"], chat_states)
 
-    queue = load_json(QUEUE_FILE)
+    queue = load_json(paths["queue"])
     if not isinstance(queue, list):
         queue = []
     queue.append({
@@ -641,7 +688,7 @@ async def api_send_media_handler(request):
         "queued_at": now_ts,
         "source": "dashboard"
     })
-    save_json(QUEUE_FILE, queue)
+    save_json(paths["queue"], queue)
 
     return web.json_response({"ok": True, "photo_url": photo_url})
 
@@ -795,8 +842,12 @@ async def api_vault_send_handler(request):
     now_ts = time.time()
     photo_url = target_item["url"]
 
+    acc_id = body.get("account", "default") or "default"
+    paths = get_account_paths(acc_id)
+
     import gemini_client
-    gemini_client.gemini_client.add_message(
+    hist_client = gemini_client.MiwaGeminiClient(history_file=paths["histories"])
+    hist_client.add_message(
         user_id,
         "assistant",
         caption,
@@ -805,7 +856,7 @@ async def api_vault_send_handler(request):
         read=False
     )
 
-    chat_states = load_json(STATES_FILE)
+    chat_states = load_json(paths["states"])
     if isinstance(chat_states, dict) and user_id in chat_states:
         chat_states[user_id]["last_message_from"] = "miwa"
         chat_states[user_id]["last_message_time"] = now_ts
@@ -813,9 +864,9 @@ async def api_vault_send_handler(request):
         sent_vault = chat_states[user_id].setdefault("sent_vault_ids", [])
         if media_id not in sent_vault:
             sent_vault.append(media_id)
-        save_json(STATES_FILE, chat_states)
+        save_json(paths["states"], chat_states)
 
-    queue = load_json(QUEUE_FILE)
+    queue = load_json(paths["queue"])
     if not isinstance(queue, list):
         queue = []
     queue.append({
@@ -825,7 +876,7 @@ async def api_vault_send_handler(request):
         "queued_at": now_ts,
         "source": "vault"
     })
-    save_json(QUEUE_FILE, queue)
+    save_json(paths["queue"], queue)
 
     return web.json_response({"ok": True, "photo_url": photo_url})
 
@@ -908,6 +959,101 @@ async def api_backups_restore_handler(request):
         return web.json_response({"error": str(e)}, status=500)
 
 
+
+# ── GESTION DES COMPTES TELEGRAM (MULTI-COMPTE) ──
+def load_accounts():
+    accs = load_json(ACCOUNTS_FILE)
+    if not isinstance(accs, list) or not accs:
+        accs = [
+            {"id": "default", "name": "Compte Principal", "phone": os.getenv("TELEGRAM_PHONE", ""), "is_default": True}
+        ]
+        save_json(ACCOUNTS_FILE, accs)
+    return accs
+
+async def api_accounts_list_handler(request):
+    token = request.query.get("token", "")
+    if token != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    accs = load_accounts()
+    # Récupérer le statut et nombre de fans pour chaque compte
+    results = []
+    for a in accs:
+        aid = a["id"]
+        paths = get_account_paths(aid)
+        states = load_json(paths["states"])
+        total_fans = len(states)
+        unread = sum(1 for s in states.values() if s.get("last_message_from") == "fan" and not s.get("is_read", False))
+        sess_name = "miwa_personal_session" if aid == "default" else f"miwa_personal_session_{aid}"
+        has_session = os.path.exists(os.path.join(BASE_DIR, f"{sess_name}.session"))
+        results.append({
+            "id": aid,
+            "name": a.get("name", aid),
+            "phone": a.get("phone", ""),
+            "is_default": bool(a.get("is_default", False)),
+            "total_fans": total_fans,
+            "unread": unread,
+            "has_session": has_session
+        })
+    return web.json_response({"ok": True, "accounts": results})
+
+async def api_accounts_create_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    name = body.get("name", "").strip()
+    phone = body.get("phone", "").strip()
+    if not name:
+        return web.json_response({"error": "Nom du compte requis"}, status=400)
+    
+    clean_id = re.sub(r'[^a-zA-Z0-9_]', '', name.lower().replace(' ', '_'))
+    if not clean_id or clean_id in ("default", "main"):
+        clean_id = f"acc_{int(time.time())}"
+    
+    accs = load_accounts()
+    if any(a["id"] == clean_id for a in accs):
+        clean_id = f"{clean_id}_{str(int(time.time()))[-4:]}"
+        
+    new_acc = {
+        "id": clean_id,
+        "name": name,
+        "phone": phone,
+        "created_at": time.time(),
+        "is_default": False
+    }
+    accs.append(new_acc)
+    save_json(ACCOUNTS_FILE, accs)
+    
+    # Créer les fichiers vides associés pour ce compte
+    paths = get_account_paths(clean_id)
+    if not os.path.exists(paths["states"]):
+        save_json(paths["states"], {})
+    if not os.path.exists(paths["histories"]):
+        save_json(paths["histories"], {})
+    if not os.path.exists(paths["queue"]):
+        save_json(paths["queue"], [])
+    if not os.path.exists(paths["presence"]):
+        save_json(paths["presence"], {})
+        
+    return web.json_response({"ok": True, "account": new_acc, "accounts": accs})
+
+async def api_accounts_delete_handler(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+    if body.get("token", "") != DASHBOARD_PASSWORD:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    aid = body.get("id", "").strip()
+    if not aid or aid == "default":
+        return web.json_response({"error": "Impossible de supprimer le compte principal"}, status=400)
+    accs = load_accounts()
+    accs = [a for a in accs if a["id"] != aid]
+    save_json(ACCOUNTS_FILE, accs)
+    return web.json_response({"ok": True, "accounts": accs})
+
 def make_app():
     # 100 Mo max pour supporter l'envoi de photos et vidéos sans erreur 413
     app = web.Application(client_max_size=100 * 1024 * 1024)
@@ -928,6 +1074,9 @@ def make_app():
     app.router.add_post("/api/fans/bulk", api_bulk_action_handler)
     app.router.add_get("/api/backups", api_backups_list_handler)
     app.router.add_post("/api/backups/restore", api_backups_restore_handler)
+    app.router.add_get("/api/accounts", api_accounts_list_handler)
+    app.router.add_post("/api/accounts/create", api_accounts_create_handler)
+    app.router.add_post("/api/accounts/delete", api_accounts_delete_handler)
     app.router.add_post("/api/suggest", api_suggest_handler)
     app.router.add_get("/api/payment-links", api_payment_links_handler)
     app.router.add_post("/api/payment-links", api_save_payment_links_handler)
