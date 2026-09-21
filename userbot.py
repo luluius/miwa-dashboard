@@ -41,9 +41,6 @@ if not API_ID or not API_HASH:
     print("=" * 60 + "\n")
     exit(1)
 
-hist_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("conversation_histories.json"))
-gemini_client = MiwaGeminiClient(history_file=hist_file)
-
 import json
 import time
 
@@ -65,6 +62,9 @@ def get_account_filename(base_name):
         return base_name
     name, ext = os.path.splitext(base_name)
     return f"{name}_{CURRENT_ACCOUNT}{ext}"
+
+hist_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("conversation_histories.json"))
+gemini_client = MiwaGeminiClient(history_file=hist_file)
 
 STATES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("chat_states.json"))
 USER_PRESENCE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("user_presence.json"))
