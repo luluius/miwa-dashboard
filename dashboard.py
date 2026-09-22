@@ -487,19 +487,19 @@ async def api_send_handler(request):
     user_state = chat_states.get(user_id, {}) if isinstance(chat_states, dict) else {}
     target_lang = user_state.get("language", "fr")
 
-    # Traduction sortante désactivée — les messages partent tels quels en français
-    import gemini_client
+    should_translate = bool(body.get("translate", False))
     actual_telegram_message = message
     sent_content = None
 
-    # if target_lang and target_lang != "fr":
-    #     try:
-    #         translated = await gemini_client.gemini_client.translate_to_language(message, target_lang)
-    #         if translated and translated.strip():
-    #             actual_telegram_message = translated.strip()
-    #             sent_content = actual_telegram_message
-    #     except Exception as e:
-    #         print(f"Erreur traduction sortante: {e}")
+    if should_translate and target_lang and target_lang != "fr":
+        try:
+            import gemini_client
+            translated = await gemini_client.gemini_client.translate_to_language(message, target_lang)
+            if translated and translated.strip():
+                actual_telegram_message = translated.strip()
+                sent_content = actual_telegram_message
+        except Exception as e:
+            print(f"Erreur traduction sortante: {e}")
 
     now_ts = time.time()
     hist_client = gemini_client.MiwaGeminiClient(history_file=paths["histories"])
@@ -726,18 +726,33 @@ async def api_send_media_handler(request):
     acc_id = body.get("account", "default") or "default"
     paths = get_account_paths(acc_id)
 
+    chat_states = load_json(paths["states"])
+    user_state = chat_states.get(user_id, {}) if isinstance(chat_states, dict) else {}
+    target_lang = user_state.get("language", "fr")
+    should_translate = bool(body.get("translate", False))
+    actual_caption = caption
+
+    if should_translate and caption and target_lang and target_lang != "fr":
+        try:
+            import gemini_client
+            translated = await gemini_client.gemini_client.translate_to_language(caption, target_lang)
+            if translated and translated.strip():
+                actual_caption = translated.strip()
+        except Exception as e:
+            print(f"Erreur traduction caption: {e}")
+
     import gemini_client
     hist_client = gemini_client.MiwaGeminiClient(history_file=paths["histories"])
     hist_client.add_message(
         user_id,
         "assistant",
         caption,
+        sent_content=actual_caption if actual_caption != caption else None,
         photo_url=photo_url,
         timestamp=now_ts,
         read=False
     )
 
-    chat_states = load_json(paths["states"])
     if isinstance(chat_states, dict) and user_id in chat_states:
         chat_states[user_id]["last_message_from"] = "miwa"
         chat_states[user_id]["last_message_time"] = now_ts
@@ -749,7 +764,7 @@ async def api_send_media_handler(request):
         queue = []
     queue.append({
         "user_id": int(user_id),
-        "message": caption,
+        "message": actual_caption,
         "media_path": filepath,
         "queued_at": now_ts,
         "source": "dashboard"
