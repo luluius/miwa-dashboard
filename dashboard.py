@@ -225,6 +225,7 @@ async def api_fans_handler(request):
     tags_dict = {t["id"]: t for t in tags_list}
     now = time.time()
     all_uids = list(dict.fromkeys(list(chat_states.keys()) + list(histories.keys())))
+    fans = []
     stats = {"total_fans": len(all_uids), "unread": 0, "followup": 0, "total_revenue": 0}
     for t in tags_list:
         stats[t["id"]] = 0
