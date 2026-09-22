@@ -48,10 +48,30 @@ PAYMENT_LINKS_FILE = os.path.join(BASE_DIR, "payment_links.json")
 SCRIPTS_FILE = os.path.join(BASE_DIR, "scripts.json")
 VAULT_FILE = os.path.join(BASE_DIR, "vault_media.json")
 TAGS_FILE = os.path.join(BASE_DIR, "custom_tags.json")
+TAGS_REGISTRY_FILE = os.path.join(BASE_DIR, "fan_tags_registry.json")
 RATES_RULES_FILE = os.path.join(BASE_DIR, "rates_rules.json")
 MEDIA_DIR = os.path.join(BASE_DIR, "media")
 VAULT_DIR = os.path.join(BASE_DIR, "vault")
 BACKUP_DIR = os.path.join(BASE_DIR, "backups")
+
+def load_tags_registry():
+    return load_json(TAGS_REGISTRY_FILE) or {}
+
+def save_fan_tag_to_registry(account_id, user_id, tag_id, sender_name=""):
+    reg = load_tags_registry()
+    key = f"{account_id}:{user_id}"
+    if tag_id:
+        reg[key] = {
+            "account_id": account_id,
+            "user_id": str(user_id),
+            "tag_id": tag_id,
+            "sender_name": sender_name,
+            "updated_at": time.time()
+        }
+    else:
+        reg.pop(key, None)
+    save_json(TAGS_REGISTRY_FILE, reg)
+
 
 # Helper pour obtenir les chemins de données selon le compte
 def get_account_id(request):
@@ -195,8 +215,18 @@ def load_tags():
 def save_tags(tags):
     return save_json(TAGS_FILE, tags)
 
-def get_fan_status(state, user_id: str, tags_dict: dict):
+def get_fan_status(state, user_id: str, tags_dict: dict, account_id: str = "default"):
     tag_id = state.get("tag_id") or state.get("manual_status")
+    # Sécurité absolue : si le fan n'a pas de tag dans son state, vérifier le registre permanent
+    if not tag_id:
+        reg = load_tags_registry()
+        reg_entry = reg.get(f"{account_id}:{user_id}")
+        if reg_entry and reg_entry.get("tag_id"):
+            tag_id = reg_entry["tag_id"]
+            # Réinjecter directement dans le state pour la suite
+            state["tag_id"] = tag_id
+            state["manual_status"] = tag_id
+
     if not tag_id or tag_id not in tags_dict:
         return "", "", "", "", False
     tag = tags_dict[tag_id]
@@ -264,7 +294,7 @@ async def api_fans_handler(request):
         is_online = bool(p.get("online", False))
         is_typing = bool(p.get("typing_until", 0) > now)
 
-        sc, sl, bs, dot, is_manual = get_fan_status(state, uid, tags_dict)
+        sc, sl, bs, dot, is_manual = get_fan_status(state, uid, tags_dict, account_id=acc_id)
         if sc in stats:
             stats[sc] += 1
 
@@ -345,6 +375,8 @@ async def api_status_handler(request):
     chat_states[user_id]["tag_id"] = tag_id or ""
     chat_states[user_id]["manual_status"] = tag_id or ""
     save_json(paths["states"], chat_states)
+    # Enregistrer dans le registre permanent indépendant
+    save_fan_tag_to_registry(acc_id, user_id, tag_id, chat_states[user_id].get("sender_name", ""))
     return web.json_response({"ok": True, "tag_id": tag_id})
 
 async def api_tags_handler(request):
