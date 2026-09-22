@@ -337,13 +337,11 @@ async def queue_processor(client):
                         CHAT_STATES[uid_str]["relance_sent"] = False
                         save_chat_states()
 
-                    # Mettre à jour msg_id dans l'historique
-                    import gemini_client as gc
-                    gc.gemini_client.histories = gc.gemini_client._load_histories()
-                    user_hist = gc.gemini_client.histories.get(uid_str, [])
+                    # Mettre à jour msg_id dans l'historique isolé de ce compte
+                    user_hist = gemini_client._get_history(uid_str)
                     if user_hist and user_hist[-1].get("role") == "assistant":
                         user_hist[-1]["msg_id"] = msg_id
-                        gc.gemini_client._save_histories()
+                        gemini_client._save_histories()
 
                     logger.info(f"📤 [Dashboard] Message envoyé à {uid_str} (ID msg: {msg_id}): {message[:60]}")
                 except Exception as e:
@@ -362,10 +360,9 @@ async def queue_processor(client):
 
 
 def mark_history_read_up_to(uid_str: str, max_id: int = 0):
-    """Marque les messages envoyés par Miwa comme lus (read = True) jusqu'à max_id."""
+    """Marque les messages envoyés par Miwa comme lus (read = True) jusqu'à max_id pour ce compte."""
     try:
-        import gemini_client as gc
-        hist = gc.gemini_client._get_history(uid_str)
+        hist = gemini_client._get_history(uid_str)
         updated = False
         for m in hist:
             if m.get("role") == "assistant" and not m.get("read"):
@@ -377,7 +374,7 @@ def mark_history_read_up_to(uid_str: str, max_id: int = 0):
                     m["read"] = True
                     updated = True
         if updated:
-            gc.gemini_client._save_histories()
+            gemini_client._save_histories()
             logger.info(f"✓✓ Accusé de lecture synchronisé pour {uid_str} (max_id: {max_id})")
     except Exception as e:
         logger.error(f"Erreur mark_history_read_up_to: {e}")
@@ -393,8 +390,7 @@ async def read_sync_processor(client):
     while True:
         try:
             await asyncio.sleep(3)
-            import gemini_client as gc
-            histories = gc.gemini_client._load_histories()
+            histories = gemini_client._load_histories()
             
             # Ne vérifier que les contacts ayant des messages assistant non lus récents
             pending_uids = set()
