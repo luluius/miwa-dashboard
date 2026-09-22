@@ -1666,6 +1666,7 @@ async function loadChat(uid, scroll){
         }).join("");
 
         if(shouldScroll) scrollChatToBottom();
+        if(autoTranslateEnabled) setTimeout(translateVisibleMessages, 100);
     }catch(e){
         console.error(e);
     }
@@ -2244,15 +2245,21 @@ async function sendMessage(){
                     user_id: activeUserId,
                     account: currentAccountId,
                     image_b64: b64ToSend,
-                    filename: fnameToSend,
-                    message: txt
+                    message: txt,
+                    translate: autoTranslateEnabled
                 })
             });
         } else {
             r = await fetch("/api/send", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({token: authToken, user_id: activeUserId, account: currentAccountId, message: txt})
+                body: JSON.stringify({
+                    token: authToken,
+                    user_id: activeUserId,
+                    account: currentAccountId,
+                    message: txt,
+                    translate: autoTranslateEnabled
+                })
             });
         }
         d = await r.json();
@@ -3938,17 +3945,20 @@ async function translateText(text) {
 
 async function translateVisibleMessages() {
     if (!autoTranslateEnabled) return;
-    var msgs = document.querySelectorAll('.chat-bubble-user');
+    var msgs = document.querySelectorAll('.chat-bubble-received');
     for (var i = 0; i < msgs.length; i++) {
         if (msgs[i].querySelector('.msg-translation')) continue;
-        var originalText = msgs[i].innerText.trim();
-        if (!originalText || originalText.length < 3) continue;
+        // Trouver le conteneur du texte du message (qui a class whitespace-pre-wrap)
+        var textNode = msgs[i].querySelector('.whitespace-pre-wrap');
+        if (!textNode) continue;
+        var originalText = textNode.innerText.trim();
+        if (!originalText || originalText.length < 2) continue;
         var translated = await translateText(originalText);
         if (translated && translated.toLowerCase() !== originalText.toLowerCase()) {
             var el = document.createElement('div');
-            el.className = 'msg-translation text-[10px] text-[#94a3b8] mt-1 italic border-t border-white/30 pt-1';
-            el.innerText = '🌍 ' + translated;
-            msgs[i].appendChild(el);
+            el.className = 'msg-translation text-[11px] text-[#2563eb] mt-1.5 pt-1 border-t border-[#e2ded5] font-medium';
+            el.innerHTML = '<span class="text-[10px] text-slate-400">🌍 Traduction :</span> ' + translated;
+            textNode.parentNode.insertBefore(el, textNode.nextSibling);
         }
     }
 }
