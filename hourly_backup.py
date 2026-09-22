@@ -53,11 +53,24 @@ def perform_backup():
                 except Exception as e:
                     print(f"❌ Erreur copie {fname}: {e}")
 
-    # Sauvegarder aussi accounts.json
-    if os.path.exists(ACCOUNTS_FILE):
-        dst_acc = os.path.join(BACKUP_DIR, f"accounts_{ts}.json")
-        try:
-            shutil.copy2(ACCOUNTS_FILE, dst_acc)
+    # Sauvegarder aussi la liste des étiquettes et configurations
+    global_files = [
+        "custom_tags.json",
+        "fan_tags_registry.json",
+        "payment_links.json",
+        "scripts.json",
+        "rates_rules.json",
+        "accounts.json"
+    ]
+    for gf in global_files:
+        src = os.path.join(BASE_DIR, gf)
+        if os.path.exists(src) and os.path.getsize(src) > 2:
+            dst = os.path.join(BACKUP_DIR, f"{gf.replace('.json', '')}_{ts}.json")
+            try:
+                shutil.copy2(src, dst)
+                saved_files += 1
+            except Exception as e:
+                print(f"❌ Erreur copie {gf}: {e}")
         except Exception:
             pass
 
