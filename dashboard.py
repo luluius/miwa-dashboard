@@ -224,14 +224,16 @@ async def api_fans_handler(request):
     tags_list = load_tags()
     tags_dict = {t["id"]: t for t in tags_list}
     now = time.time()
-    fans = []
-    stats = {"total_fans": len(chat_states), "unread": 0, "followup": 0, "total_revenue": 0}
+    all_uids = list(dict.fromkeys(list(chat_states.keys()) + list(histories.keys())))
+    stats = {"total_fans": len(all_uids), "unread": 0, "followup": 0, "total_revenue": 0}
     for t in tags_list:
         stats[t["id"]] = 0
 
-    for uid, state in chat_states.items():
-        # Extraire le dernier message pour la prévisualisation dans la barre latérale
+    for uid in all_uids:
+        state = chat_states.get(str(uid), {})
         user_history = histories.get(str(uid), [])
+        if not state and not user_history:
+            continue
         last_msg_snippet = ""
         last_msg_time = state.get("last_message_time", 0)
         last_role = ""
