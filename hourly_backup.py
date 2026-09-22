@@ -71,8 +71,6 @@ def perform_backup():
                 saved_files += 1
             except Exception as e:
                 print(f"❌ Erreur copie {gf}: {e}")
-        except Exception:
-            pass
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ✅ Sauvegarde terminée ({saved_files} fichiers archivés).")
 
