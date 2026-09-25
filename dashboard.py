@@ -216,16 +216,16 @@ def save_tags(tags):
     return save_json(TAGS_FILE, tags)
 
 def get_fan_status(state, user_id: str, tags_dict: dict, account_id: str = "default"):
-    tag_id = state.get("tag_id") or state.get("manual_status")
-    # Sécurité absolue : si le fan n'a pas de tag dans son state, vérifier le registre permanent
-    if not tag_id:
-        reg = load_tags_registry()
-        reg_entry = reg.get(f"{account_id}:{user_id}")
-        if reg_entry and reg_entry.get("tag_id"):
-            tag_id = reg_entry["tag_id"]
-            # Réinjecter directement dans le state pour la suite
-            state["tag_id"] = tag_id
-            state["manual_status"] = tag_id
+    # PRIORITÉ ABSOLUE : Vérifier d'abord le registre permanent indépendant
+    reg = load_tags_registry()
+    reg_entry = reg.get(f"{account_id}:{user_id}")
+    if reg_entry and reg_entry.get("tag_id"):
+        tag_id = reg_entry["tag_id"]
+        # Réinjecter directement dans le state pour synchroniser
+        state["tag_id"] = tag_id
+        state["manual_status"] = tag_id
+    else:
+        tag_id = state.get("tag_id") or state.get("manual_status")
 
     if not tag_id or tag_id not in tags_dict:
         return "", "", "", "", False
@@ -682,7 +682,7 @@ async def api_mark_read_handler(request):
     if user_id in chat_states:
         chat_states[user_id]["last_message_from"] = "miwa"
         chat_states[user_id]["is_read"] = True
-        save_json(STATES_FILE, chat_states)
+        save_json(paths["states"], chat_states)
         return web.json_response({"ok": True})
     return web.json_response({"error": "Fan introuvable"}, status=404)
 
