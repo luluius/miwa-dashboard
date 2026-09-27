@@ -111,12 +111,18 @@ class MiwaGeminiClient:
     def _save_histories(self):
         h_file = getattr(self, "history_file", HISTORIES_FILE)
         try:
-            tmp_file = h_file + ".tmp"
+            os.makedirs(os.path.dirname(os.path.abspath(h_file)), exist_ok=True)
+            tmp_file = f"{h_file}.{os.getpid()}_{int(time.time()*1000)}.tmp"
             with open(tmp_file, "w", encoding="utf-8") as f:
                 json.dump(self.histories, f, ensure_ascii=False, indent=2)
             os.replace(tmp_file, h_file)
         except Exception as e:
-            logger.error(f"Erreur sauvegarde histories: {e}")
+            try:
+                # Fallback direct write
+                with open(h_file, "w", encoding="utf-8") as f:
+                    json.dump(self.histories, f, ensure_ascii=False, indent=2)
+            except Exception as e2:
+                logger.error(f"Erreur sauvegarde histories: {e} / {e2}")
 
 
     def clear_history(self, user_id: int):
