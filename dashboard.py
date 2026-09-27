@@ -491,41 +491,46 @@ async def api_send_handler(request):
     actual_telegram_message = message
     sent_content = None
 
-    if should_translate and target_lang and target_lang != "fr":
-        try:
-            import gemini_client
-            translated = await gemini_client.gemini_client.translate_to_language(message, target_lang)
-            if translated and translated.strip():
-                actual_telegram_message = translated.strip()
-                sent_content = actual_telegram_message
-        except Exception as e:
-            print(f"Erreur traduction sortante: {e}")
+    import gemini_client
 
-    now_ts = time.time()
-    hist_client = gemini_client.MiwaGeminiClient(history_file=paths["histories"])
-    hist_client.add_message(
-        user_id,
-        "assistant",
-        message,
-        sent_content=sent_content,
-        lang=target_lang,
-        timestamp=now_ts,
-        read=False
-    )
+    try:
+        if should_translate and target_lang and target_lang != "fr":
+            try:
+                translated = await gemini_client.gemini_client.translate_to_language(message, target_lang)
+                if translated and translated.strip():
+                    actual_telegram_message = translated.strip()
+                    sent_content = actual_telegram_message
+            except Exception as e:
+                print(f"Erreur traduction sortante: {e}")
 
-    if isinstance(chat_states, dict) and user_id in chat_states:
-        chat_states[user_id]["last_message_from"] = "miwa"
-        chat_states[user_id]["last_message_time"] = now_ts
-        chat_states[user_id]["message_count"] = chat_states[user_id].get("message_count", 0) + 1
-        save_json(paths["states"], chat_states)
+        now_ts = time.time()
+        hist_client = gemini_client.MiwaGeminiClient(history_file=paths["histories"])
+        hist_client.add_message(
+            user_id,
+            "assistant",
+            message,
+            sent_content=sent_content,
+            lang=target_lang,
+            timestamp=now_ts,
+            read=False
+        )
 
-    queue = load_json(paths["queue"])
-    if not isinstance(queue, list):
-        queue = []
-    queue.append({"user_id": int(user_id), "message": actual_telegram_message, "queued_at": now_ts, "source": "dashboard"})
-    if save_json(paths["queue"], queue):
-        return web.json_response({"ok": True})
-    return web.json_response({"error": "Erreur écriture queue"}, status=500)
+        if isinstance(chat_states, dict) and user_id in chat_states:
+            chat_states[user_id]["last_message_from"] = "miwa"
+            chat_states[user_id]["last_message_time"] = now_ts
+            chat_states[user_id]["message_count"] = chat_states[user_id].get("message_count", 0) + 1
+            save_json(paths["states"], chat_states)
+
+        queue = load_json(paths["queue"])
+        if not isinstance(queue, list):
+            queue = []
+        queue.append({"user_id": int(user_id), "message": actual_telegram_message, "queued_at": now_ts, "source": "dashboard"})
+        if save_json(paths["queue"], queue):
+            return web.json_response({"ok": True})
+        return web.json_response({"error": "Erreur écriture queue"}, status=500)
+    except Exception as e:
+        print(f"Erreur api_send_handler: {e}")
+        return web.json_response({"error": f"Erreur serveur envoi: {e}"}, status=500)
 
 async def api_suggest_handler(request):
     try:
