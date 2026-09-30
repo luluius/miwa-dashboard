@@ -341,7 +341,8 @@ async def api_fans_handler(request):
             "followup_note": followup_note,
             "is_online": is_online,
             "is_typing": is_typing,
-            "is_unread": is_unread
+            "is_unread": is_unread,
+            "is_unanswered": bool(last_role == "user" or state.get("last_message_from") == "fan")
         })
     fans.sort(key=lambda x: x["last_message_time"], reverse=True)
     return web.json_response({"stats": stats, "fans": fans, "tags": tags_list})
