@@ -3740,6 +3740,7 @@ function renderMassTagFilters() {
     var tags = [
         { id: 'all', label: 'Tous' },
         { id: 'unread', label: '🔵 Non lus' },
+        { id: 'read', label: '👀 Lus' },
         { id: 'unanswered', label: '⏳ Sans réponse (Pas rép)' }
     ];
     currentTags.forEach(function(t){
@@ -3760,8 +3761,8 @@ function renderMassTagFilters() {
 function selectMassTagFilter(filterId) {
     massActiveFilter = filterId;
     renderMassTagFilters();
-    // Si on clique sur Non lus ou Sans réponse, cocher automatiquement les fans correspondants
-    if (filterId === 'unread' || filterId === 'unanswered') {
+    // Si on clique sur Non lus, Lus ou Sans réponse, cocher automatiquement les fans correspondants
+    if (filterId === 'unread' || filterId === 'read' || filterId === 'unanswered') {
         massSelectedUids.clear();
         var matching = getFilteredFansForMass();
         matching.forEach(function(f){ massSelectedUids.add(f.user_id); });
@@ -3782,6 +3783,7 @@ function getFilteredFansForMass() {
     return fansData.filter(function(f){
         if (massActiveFilter === 'all') return !isGoldFan(f);
         if (massActiveFilter === 'unread') return !isGoldFan(f) && f.is_unread;
+        if (massActiveFilter === 'read') return !isGoldFan(f) && !f.is_unread;
         if (massActiveFilter === 'unanswered') return !isGoldFan(f) && isFanUnanswered(f);
         return f.status_code === massActiveFilter;
     });
