@@ -3737,7 +3737,11 @@ function renderMassTagFilters() {
     var bar = document.getElementById('massTagFiltersBar');
     if (!bar) return;
 
-    var tags = [{ id: 'all', label: 'Tous' }, { id: 'unread', label: 'Non lus' }];
+    var tags = [
+        { id: 'all', label: 'Tous' },
+        { id: 'unread', label: '🔵 Non lus' },
+        { id: 'unanswered', label: '⏳ Sans réponse (Pas rép)' }
+    ];
     currentTags.forEach(function(t){
         tags.push({ id: t.id, label: t.label, color: t.color });
     });
@@ -3747,7 +3751,7 @@ function renderMassTagFilters() {
         var cls = isActive
             ? 'bg-purple-600 text-white font-bold shadow-xs'
             : 'bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0] font-medium';
-        return '<button type="button" onclick="selectMassTagFilter(\'' + t.id + '\')" class="px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition ' + cls + '">' +
+        return '<button type="button" onclick="selectMassTagFilter(\'' + t.id + '\')" class="px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition cursor-pointer ' + cls + '">' +
             t.label +
         '</button>';
     }).join('');
@@ -3756,13 +3760,29 @@ function renderMassTagFilters() {
 function selectMassTagFilter(filterId) {
     massActiveFilter = filterId;
     renderMassTagFilters();
+    // Si on clique sur Non lus ou Sans réponse, cocher automatiquement les fans correspondants
+    if (filterId === 'unread' || filterId === 'unanswered') {
+        massSelectedUids.clear();
+        var matching = getFilteredFansForMass();
+        matching.forEach(function(f){ massSelectedUids.add(f.user_id); });
+    }
     renderMassFansList();
+    updateMassSelectedCount();
+}
+
+function isFanUnanswered(f) {
+    if (!f) return false;
+    if (f.is_unanswered || f.is_unread) return true;
+    var lm = (f.last_message || '').trim();
+    if (lm && !lm.startsWith('Miwa:')) return true;
+    return false;
 }
 
 function getFilteredFansForMass() {
     return fansData.filter(function(f){
         if (massActiveFilter === 'all') return !isGoldFan(f);
         if (massActiveFilter === 'unread') return !isGoldFan(f) && f.is_unread;
+        if (massActiveFilter === 'unanswered') return !isGoldFan(f) && isFanUnanswered(f);
         return f.status_code === massActiveFilter;
     });
 }
