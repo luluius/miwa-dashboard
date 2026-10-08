@@ -69,6 +69,8 @@ gemini_client = MiwaGeminiClient(history_file=hist_file)
 STATES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("chat_states.json"))
 USER_PRESENCE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("user_presence.json"))
 QUEUE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("message_queue.json"))
+STARS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("stars_data.json"))
+STARS_REFRESH_FLAG = os.path.join(os.path.dirname(os.path.abspath(__file__)), get_account_filename("stars_refresh.flag"))
 
 CHAT_STATES = {}
 
@@ -575,7 +577,7 @@ async def on_message_read(event):
         logger.error(f"Erreur on_message_read: {e}")
 
 async def on_raw_update(event):
-    """Intercepte les accusés de lecture bas niveau Telegram (UpdateReadHistoryOutbox)."""
+    """Intercepte les accusés de lecture bas niveau Telegram (UpdateReadHistoryOutbox) et mises à jour Stars."""
     try:
         from telethon.tl.types import UpdateReadHistoryOutbox
         if isinstance(event, UpdateReadHistoryOutbox):
@@ -583,8 +585,316 @@ async def on_raw_update(event):
             uid = getattr(peer, "user_id", None)
             if uid:
                 mark_history_read_up_to(str(uid), getattr(event, "max_id", 0))
+        elif type(event).__name__ in ("UpdateStarsBalance", "UpdateStarsRevenueStatus"):
+            with open(STARS_REFRESH_FLAG, "w", encoding="utf-8") as f:
+                f.write(str(time.time()))
     except Exception as e:
         logger.debug(f"Erreur on_raw_update: {e}")
+
+def _extract_stars_amount(val):
+    if val is None:
+        return 0
+    if isinstance(val, (int, float)):
+        return int(val)
+    if hasattr(val, "amount"):
+        amt = getattr(val, "amount", 0) or 0
+        nanos = getattr(val, "nanos", 0) or 0
+        return round(amt + nanos / 1e9, 2) if nanos else int(amt)
+    try:
+        return int(val)
+    except Exception:
+        return 0
+
+async def fetch_and_save_stars_data(client):
+    """Interroge l'API MTProto Telegram pour récupérer le solde d'Étoiles (Stars), les transactions et cadeaux."""
+    try:
+        from telethon.tl.functions.payments import GetStarsStatusRequest
+        from telethon.tl.types import InputPeerSelf
+    except ImportError as ie:
+        logger.warning(f"GetStarsStatusRequest non supporté par cette version de Telethon: {ie}")
+        return
+
+    try:
+        status = await client(GetStarsStatusRequest(peer=InputPeerSelf()))
+        balance = _extract_stars_amount(getattr(status, "balance", 0))
+        all_txs = list(getattr(status, "history", []) or [])
+        users_map = {u.id: u for u in (getattr(status, "users", []) or [])}
+        chats_map = {c.id: c for c in (getattr(status, "chats", []) or [])}
+        next_offset = getattr(status, "next_offset", None)
+
+        # Paginer jusqu'à 5 pages pour avoir l'historique complet des étoiles gagnées
+        if next_offset:
+            try:
+                from telethon.tl.functions.payments import GetStarsTransactionsRequest
+                for _ in range(5):
+                    if not next_offset:
+                        break
+                    try:
+                        page = await client(GetStarsTransactionsRequest(peer=InputPeerSelf(), offset=next_offset, limit=100))
+                    except TypeError:
+                        page = await client(GetStarsTransactionsRequest(peer=InputPeerSelf(), offset=next_offset))
+                    page_txs = list(getattr(page, "history", []) or [])
+                    if not page_txs:
+                        break
+                    all_txs.extend(page_txs)
+                    for u in (getattr(page, "users", []) or []):
+                        users_map[u.id] = u
+                    for c in (getattr(page, "chats", []) or []):
+                        chats_map[c.id] = c
+                    new_offset = getattr(page, "next_offset", None)
+                    if not new_offset or new_offset == next_offset:
+                        break
+                    next_offset = new_offset
+            except Exception as pe:
+                logger.debug(f"Pagination StarsTransactions: {pe}")
+
+        # Récupérer également les Cadeaux Étoiles (Star Gifts) sur le profil si disponible
+        gifts_count = 0
+        gifts_stars = 0
+        gifts_convert_stars = 0
+        try:
+            from telethon.tl.functions.payments import GetSavedStarGiftsRequest
+            saved_gifts = await client(GetSavedStarGiftsRequest(peer=InputPeerSelf(), offset="", limit=100))
+            gifts_list = getattr(saved_gifts, "gifts", []) or []
+            gifts_count = getattr(saved_gifts, "count", len(gifts_list)) or len(gifts_list)
+            for g in gifts_list:
+                gift_obj = getattr(g, "gift", None)
+                if gift_obj:
+                    gifts_stars += _extract_stars_amount(getattr(gift_obj, "stars", 0))
+                    gifts_convert_stars += _extract_stars_amount(getattr(gift_obj, "convert_stars", 0))
+        except Exception:
+            try:
+                from telethon.tl.functions.payments import GetUserStarGiftsRequest
+                me_id = MY_USER_ID or (await client.get_me()).id
+                user_gifts = await client(GetUserStarGiftsRequest(user_id=me_id, offset="", limit=100))
+                gifts_list = getattr(user_gifts, "gifts", []) or []
+                gifts_count = getattr(user_gifts, "count", len(gifts_list)) or len(gifts_list)
+                for g in gifts_list:
+                    gift_obj = getattr(g, "gift", None)
+                    if gift_obj:
+                        gifts_stars += _extract_stars_amount(getattr(gift_obj, "stars", 0))
+                        gifts_convert_stars += _extract_stars_amount(getattr(gift_obj, "convert_stars", 0))
+            except Exception:
+                pass
+
+        load_chat_states()
+        now_ts = time.time()
+        try:
+            from zoneinfo import ZoneInfo
+            now_paris = datetime.now(ZoneInfo("Europe/Paris"))
+            midnight_today_ts = now_paris.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+        except Exception:
+            midnight_today_ts = now_ts - (now_ts % 86400)
+
+        ts_7d = now_ts - 7 * 86400
+        ts_30d = now_ts - 30 * 86400
+
+        earned_from_fans = 0
+        topped_up = 0
+        total_in = 0
+        total_out = 0
+        earned_today = 0
+        earned_7d = 0
+        earned_30d = 0
+        donors_map = {}
+        transactions_formatted = []
+        seen_tx_ids = set()
+
+        for tx in all_txs:
+            tx_id = str(getattr(tx, "id", ""))
+            raw_amt = getattr(tx, "stars", None) if getattr(tx, "stars", None) is not None else getattr(tx, "amount", 0)
+            stars = _extract_stars_amount(raw_amt)
+            dt = getattr(tx, "date", None)
+            ts = int(dt.timestamp()) if dt else 0
+            tx_key = f"{tx_id}_{stars}_{ts}"
+            if tx_id and tx_key in seen_tx_ids:
+                continue
+            seen_tx_ids.add(tx_key)
+
+            is_refund = bool(getattr(tx, "refund", False))
+            is_pending = bool(getattr(tx, "pending", False))
+            is_failed = bool(getattr(tx, "failed", False))
+            is_gift = bool(getattr(tx, "gift", False) or getattr(tx, "stargift", False) or getattr(tx, "stargift_upgrade", False))
+            is_reaction = bool(getattr(tx, "reaction", False))
+            title = getattr(tx, "title", "") or ""
+            description = getattr(tx, "description", "") or ""
+
+            peer_wrapper = getattr(tx, "peer", None)
+            peer_cls = type(peer_wrapper).__name__ if peer_wrapper else ""
+            user_id_str = ""
+            username = ""
+            source_name = "Telegram"
+            source_type = "other"
+
+            if hasattr(peer_wrapper, "peer"):
+                inner = peer_wrapper.peer
+                uid = getattr(inner, "user_id", None) or getattr(inner, "channel_id", None) or getattr(inner, "chat_id", None)
+                if uid:
+                    user_id_str = str(uid)
+                    source_type = "fan"
+                    if uid in users_map:
+                        u = users_map[uid]
+                        fn = (getattr(u, "first_name", "") or "").strip()
+                        ln = (getattr(u, "last_name", "") or "").strip()
+                        username = getattr(u, "username", "") or ""
+                        source_name = f"{fn} {ln}".strip() or (f"@{username}" if username else f"Fan {uid}")
+                    elif uid in chats_map:
+                        c = chats_map[uid]
+                        source_name = getattr(c, "title", f"Chat {uid}")
+                    elif user_id_str in CHAT_STATES:
+                        source_name = CHAT_STATES[user_id_str].get("sender_name") or f"Fan {uid}"
+                    else:
+                        source_name = f"Fan {uid}"
+            elif "AppStore" in peer_cls:
+                source_name = "Apple App Store"
+                source_type = "platform"
+            elif "PlayMarket" in peer_cls:
+                source_name = "Google Play"
+                source_type = "platform"
+            elif "Fragment" in peer_cls:
+                source_name = "Fragment (Retrait / Achat)"
+                source_type = "fragment"
+            elif "PremiumBot" in peer_cls:
+                source_name = "Telegram PremiumBot"
+                source_type = "platform"
+            elif "Ads" in peer_cls:
+                source_name = "Telegram Ads"
+                source_type = "platform"
+
+            if is_refund:
+                type_label = "Remboursement"
+            elif is_reaction:
+                type_label = "Réaction Étoile ⭐"
+            elif is_gift:
+                type_label = "Cadeau Étoile 🎁"
+            elif getattr(tx, "extended_media", None):
+                type_label = "Média débloqué 🔒"
+            elif source_type == "platform" and stars > 0:
+                type_label = "Rechargement Stars"
+            elif source_type == "fragment" and stars < 0:
+                type_label = "Retrait Fragment"
+            elif title:
+                type_label = title
+            elif stars > 0:
+                type_label = "Gain d'Étoiles ⭐"
+            else:
+                type_label = "Dépense d'Étoiles"
+
+            if not is_failed and not is_refund:
+                if stars > 0:
+                    total_in += stars
+                    if source_type in ("fan", "other"):
+                        earned_from_fans += stars
+                        if ts >= midnight_today_ts:
+                            earned_today += stars
+                        if ts >= ts_7d:
+                            earned_7d += stars
+                        if ts >= ts_30d:
+                            earned_30d += stars
+                        if user_id_str:
+                            d_entry = donors_map.setdefault(user_id_str, {
+                                "user_id": user_id_str,
+                                "name": source_name,
+                                "username": username,
+                                "total_stars": 0,
+                                "tx_count": 0
+                            })
+                            d_entry["total_stars"] += stars
+                            d_entry["tx_count"] += 1
+                    elif source_type == "platform":
+                        topped_up += stars
+                elif stars < 0:
+                    total_out += abs(stars)
+
+            if len(transactions_formatted) < 100:
+                transactions_formatted.append({
+                    "id": tx_id,
+                    "stars": stars,
+                    "timestamp": ts,
+                    "type_label": type_label,
+                    "source_name": source_name,
+                    "source_type": source_type,
+                    "user_id": user_id_str,
+                    "username": username,
+                    "title": title,
+                    "description": description,
+                    "is_gift": is_gift,
+                    "is_reaction": is_reaction,
+                    "is_refund": is_refund,
+                    "is_pending": is_pending,
+                    "is_failed": is_failed
+                })
+
+        # Total gagné : étoiles reçues des fans (+ valeur des cadeaux sur profil si non convertis)
+        total_earned = earned_from_fans if earned_from_fans > 0 else max(0, total_in - topped_up)
+        if gifts_stars > 0 and total_earned == 0:
+            total_earned = gifts_stars
+
+        top_donors = sorted(donors_map.values(), key=lambda x: x["total_stars"], reverse=True)[:20]
+
+        me_obj = await client.get_me()
+        acc_username = getattr(me_obj, "username", "") or ""
+        acc_first_name = getattr(me_obj, "first_name", "") or ""
+
+        payload = {
+            "ok": True,
+            "account_id": CURRENT_ACCOUNT,
+            "account_name": acc_first_name,
+            "account_username": acc_username,
+            "balance": balance,
+            "total_earned": total_earned,
+            "earned_from_fans": earned_from_fans,
+            "total_in": total_in,
+            "total_out": total_out,
+            "topped_up": topped_up,
+            "earned_today": earned_today,
+            "earned_7d": earned_7d,
+            "earned_30d": earned_30d,
+            "gifts_count": gifts_count,
+            "gifts_stars": gifts_stars,
+            "gifts_convert_stars": gifts_convert_stars,
+            "estimated_usd": round(total_earned * 0.013, 2),
+            "estimated_eur": round(total_earned * 0.012, 2),
+            "fan_value_eur": round(total_earned * 0.02, 2),
+            "balance_usd": round(balance * 0.013, 2),
+            "balance_eur": round(balance * 0.012, 2),
+            "top_donors": top_donors,
+            "transactions": transactions_formatted,
+            "updated_at": now_ts
+        }
+
+        tmp_file = STARS_FILE + f".{os.getpid()}.tmp"
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_file, STARS_FILE)
+        logger.info(f"⭐ [Telegram Stars] Synchronisé ({CURRENT_ACCOUNT}) : Solde={balance}⭐ | Gagnées={total_earned}⭐")
+    except Exception as e:
+        logger.warning(f"Erreur fetch_and_save_stars_data ({CURRENT_ACCOUNT}): {e}")
+
+async def stars_sync_processor(client):
+    """Synchronise régulièrement et à la demande les Étoiles Telegram (Stars) via l'API."""
+    logger.info("⭐ Synchroniseur Telegram Stars démarré")
+    await asyncio.sleep(2)
+    await fetch_and_save_stars_data(client)
+    last_sync = time.time()
+    while True:
+        try:
+            await asyncio.sleep(1)
+            now = time.time()
+            force_refresh = os.path.exists(STARS_REFRESH_FLAG)
+            if force_refresh or (now - last_sync) >= 45:
+                if force_refresh:
+                    try:
+                        os.remove(STARS_REFRESH_FLAG)
+                    except Exception:
+                        pass
+                await fetch_and_save_stars_data(client)
+                last_sync = time.time()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.debug(f"stars_sync_processor loop: {e}")
+            await asyncio.sleep(5)
 
 async def on_user_update(event):
     """Détecte qui est en ligne et qui est en train d'écrire sur Telegram."""
@@ -661,6 +971,8 @@ async def main():
     asyncio.create_task(queue_processor(client))
     # Démarrage du synchroniseur actif d'accusés de lecture (✓✓)
     asyncio.create_task(read_sync_processor(client))
+    # Démarrage du synchroniseur d'Étoiles Telegram (Stars API)
+    asyncio.create_task(stars_sync_processor(client))
 
     await client.run_until_disconnected()
 
